@@ -1608,10 +1608,10 @@
     let isDrowsy = false;
     let drowsyCounter = 0;
 
-    // --- 1. Khởi tạo Bản đồ Leaflet (ĐH Bách Khoa TP.HCM) ---
-    const defaultLat = 10.7725;
-    const defaultLon = 106.6576;
-    const map = L.map('map', { zoomControl: false, maxZoom: 19 }).setView([defaultLat, defaultLon], 14);
+    // --- 1. Khởi tạo Bản đồ Leaflet (Khu vực thử nghiệm Thủ Đức / ĐHQG) ---
+    const defaultLat = 10.879389;
+    const defaultLon = 106.807389;
+    const map = L.map('map', { zoomControl: false, maxZoom: 19 }).setView([defaultLat, defaultLon], 15);
 
     // Bản đồ nền Dark Gray Esri + OpenStreetMap
     const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
@@ -1967,7 +1967,13 @@
         let state = hasPos ? 'fix' : ((p.chars != null && p.chars < 10) ? 'nodata' : 'searching');
 
         if (state !== lastFixState) {
-          if (state === 'fix') addLog(`✅ GPS đã có toạ độ vệ tinh (${sats} vệ tinh)`, 'gps');
+          if (state === 'fix') {
+            if (p.mode === 'hybrid_assisted') {
+              addLog(`📡 Kích hoạt định vị Hybrid 2D (${sats} vệ tinh dưới tán cây)`, 'gps');
+            } else {
+              addLog(`✅ GPS đã có toạ độ vệ tinh 3D (${sats} vệ tinh)`, 'gps');
+            }
+          }
           if (state === 'searching') addLog(`🔍 GPS đang tìm kiếm vệ tinh...`, 'gps');
           if (state === 'nodata') addLog(`⚠️ ESP32 chưa nhận được NMEA từ GPS NEO-6M`, 'alert');
           lastFixState = state;
@@ -1989,8 +1995,13 @@
         hasRealGpsFix = true;
         lastRealGpsPos = [p.lat, p.lon];
         lastRealGpsPayload = p;
-        fixBadge.innerText = 'Đã định vị 3D';
-        fixBadge.className = 'badge-pill badge-green';
+        if (p.mode === 'hybrid_assisted') {
+          fixBadge.innerText = 'Định vị Hybrid';
+          fixBadge.className = 'badge-pill badge-purple';
+        } else {
+          fixBadge.innerText = 'Đã định vị 3D';
+          fixBadge.className = 'badge-pill badge-green';
+        }
         document.getElementById('liveSpeed').innerText = (p.speed ?? 0).toFixed(1);
 
         // Nếu người dùng đang chạy Demo mô phỏng thì không ngắt quãng xe demo
