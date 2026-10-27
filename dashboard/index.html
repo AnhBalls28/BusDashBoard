@@ -1657,6 +1657,7 @@
     let hasRealGpsFix = false;
     let lastRealGpsPos = null;
     let lastRealGpsPayload = null;
+    let lastValidGpsTimestamp = 0;
     let isDemoRunning = false;
     let lastFixState = null;
     let lastGpsAt = 0;
@@ -2012,14 +2013,19 @@
         document.getElementById('satInfo').innerText = `${sats} Sats / ${hdop} HDOP`;
         document.getElementById('liveSats').innerText = sats;
 
-        const hasPos = p.fix === true && p.lat != null && p.lon != null && p.lat !== 0 && p.lon !== 0;
+        // Yêu cầu bắt buộc 100% vệ tinh thật:
+        // 1. fix === true
+        // 2. Toạ độ hợp lệ và khác 0.0
+        // 3. Số vệ tinh tối thiểu 4 (sats >= 4). Nếu sats < 4 hoặc sats = 0, TUYỆT ĐỐI KHÔNG LẤY TOẠ ĐỘ!
+        const numSats = typeof p.sats === 'number' ? p.sats : (p.sats ? parseInt(p.sats, 10) : 0);
+        const hasPos = p.fix === true && p.lat != null && p.lon != null && p.lat !== 0 && p.lon !== 0 && numSats >= 4;
         let state = hasPos ? 'fix' : ((p.chars != null && p.chars < 10) ? 'nodata' : 'searching');
 
         if (state !== lastFixState) {
           if (state === 'fix') {
-            addLog(`✅ GPS đã khoá toạ độ vệ tinh 3D (${sats} vệ tinh, HDOP ${hdop})`, 'gps');
+            addLog(`✅ GPS đã khoá toạ độ 3D (${numSats} vệ tinh, HDOP ${hdop})`, 'gps');
           }
-          if (state === 'searching') addLog(`🔍 Mất khoá vệ tinh / Đang tìm vệ tinh...`, 'gps');
+          if (state === 'searching') addLog(`🔍 Mất khoá vệ tinh / Đang tìm vệ tinh (Sats: ${numSats})...`, 'gps');
           if (state === 'nodata') addLog(`⚠️ ESP32 chưa nhận được NMEA từ GPS NEO-6M`, 'alert');
           lastFixState = state;
         }
@@ -2031,22 +2037,25 @@
           return;
         }
         if (state === 'searching') {
-          fixBadge.innerText = 'Đang tìm vệ tinh';
+          fixBadge.innerText = `Tìm vệ tinh (${numSats} sats)`;
           fixBadge.className = 'badge-pill badge-coral';
-          return;
+          return; // Dừng ngay, KHÔNG BAO GIỜ cập nhật vị trí ghim hay vẽ vệt đi!
         }
 
-        // Bộ lọc chống nhảy toạ độ dội sóng (Multipath Outlier Rejection):
-        // Nếu toạ độ nhảy > 75 mét trong 2 giây (tốc độ > 135 km/h khi đi bộ/xe bus thông thường)
-        // Đây là hiện tượng dội sóng tường bê tông khi bước vào cầu thang, lập tức loại bỏ!
-        if (lastRealGpsPos) {
+        // Bộ lọc chống nhảy toạ độ dội sóng (Multipath Outlier Jump Rejection):
+        // Nếu toạ độ nhảy > 40 mét trong khoảng thời gian ngắn (< 6 giây)
+        // (40m / 2s tương đương > 72 km/h - đối với người đi bộ chỉ di chuyển ~2-4m mỗi 2 giây)
+        // Đây chắc chắn là xung dội sóng tường bê tông khi vào chân toà nhà, lập tức loại bỏ!
+        const now = Date.now();
+        if (lastRealGpsPos && lastValidGpsTimestamp && (now - lastValidGpsTimestamp < 6000)) {
           const jumpDist = map.distance(lastRealGpsPos, [p.lat, p.lon]);
-          if (jumpDist > 75) {
-            console.warn(`[GPS Filter] Loại bỏ toạ độ dội sóng: nhảy ${jumpDist.toFixed(0)}m!`);
-            addLog(`⚠️ Bỏ qua toạ độ dội sóng bất thường (nhảy ${jumpDist.toFixed(0)}m)`, 'gps');
-            return;
+          if (jumpDist > 40) {
+            console.warn(`[GPS Filter] Loại bỏ toạ độ dội sóng: nhảy ${jumpDist.toFixed(0)}m trong ${((now - lastValidGpsTimestamp)/1000).toFixed(1)}s!`);
+            addLog(`⚠️ Bỏ qua toạ độ giật dội tường (nhảy ${jumpDist.toFixed(0)}m)`, 'gps');
+            return; // Loại bỏ toạ độ rác, KHÔNG cập nhật ghim hay vệt đi!
           }
         }
+        lastValidGpsTimestamp = now;
 
         // Đã qua kiểm định: toạ độ vệ tinh thực 100%
         hasRealGpsFix = true;
