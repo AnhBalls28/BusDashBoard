@@ -1027,6 +1027,7 @@
     }
 
     .chat-bubble {
+      white-space: pre-line;
       font-size: 0.78rem;
       line-height: 1.45;
       padding: 10px 12px;
@@ -1456,7 +1457,7 @@
             </svg>
             <span>BusMon AI</span>
           </div>
-          <span class="copilot-badge">Copilot v2.4</span>
+          <span class="copilot-badge" style="cursor:pointer" title="Nhập Gemini API key" onclick="setGeminiKey()">🔑 Copilot v2.4</span>
         </div>
 
         <!-- Executive Summary Card -->
@@ -1999,19 +2000,121 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    function sendPrompt(q) {
+    // ---------- AI COPILOT (LLM thật) ----------
+    // Mặc định: Pollinations (miễn phí, không cần API key, chạy được trên Vercel).
+    // Tuỳ chọn: gõ  /key <GEMINI_API_KEY>  trong khung chat để dùng Gemini (nhanh & ổn định hơn).
+    const GEMINI_KEY_STORAGE = 'busmon_gemini_key';
+    const chatHistory = [];   // lịch sử hội thoại gửi kèm mỗi lần hỏi
+
+    // Gói số liệu xe đang chạy để AI trả lời dựa trên dữ liệu thật
+    function buildTelemetryContext() {
+      const txt = id => (document.getElementById(id)?.innerText || '--').trim();
+      const dist = (lastTrailPt && route.points.length >= 2) ? distToRouteMeters(lastTrailPt[0], lastTrailPt[1]) : null;
+      return [
+        `Xe: bus01 (ESP32 + NEO-6M, MQTT broker.emqx.io)`,
+        `Hành khách: ${countTotal}/${capacity} (${Math.round(countTotal / capacity * 100)}%), đã lên ${countIn}, đã xuống ${countOut}`,
+        `Tài xế: ${isDrowsy ? 'BUỒN NGỦ' : 'tỉnh táo'}, EAR=${driverEar.toFixed(2)} (ngưỡng ngủ gật 0.22), số lần cảnh báo ngủ gật=${drowsyCounter}`,
+        `GPS: tốc độ ${txt('liveSpeed')} km/h, vệ tinh/HDOP: ${txt('satInfo')}, trạng thái: ${txt('fixStatusBadge')}`,
+        `Vị trí cuối: ${lastTrailPt ? lastTrailPt.map(v => v.toFixed(6)).join(', ') : 'chưa có fix'}`,
+        `Tuyến: ${route.points.length >= 2 ? route.points.length + ' điểm, ' + routeLengthMeters().toFixed(0) + ' m, ngưỡng lệch ' + route.threshold + ' m' : 'chưa vẽ'}; trạng thái: ${txt('routePillVal')}${dist != null ? ', cách tuyến ' + dist.toFixed(0) + ' m' : ''}`,
+        `MQTT: ${txt('mqttStatusText')}; mất tín hiệu GPS: ${lastGpsAt ? Math.round((Date.now() - lastGpsAt) / 1000) + ' giây trước' : 'chưa nhận gói nào'}`
+      ].join('\n');
+    }
+
+    const AI_SYSTEM_PROMPT =
+      'Bạn là BusMon AI, trợ lý giám sát xe bus thông minh cho đồ án của sinh viên Huỳnh Bảo Anh (ĐH Bách Khoa TP.HCM). ' +
+      'Trả lời bằng tiếng Việt, ngắn gọn (tối đa 4 câu), chính xác, dựa trên SỐ LIỆU THỰC thời gian thực bên dưới. ' +
+      'Nếu thiếu dữ liệu (ví dụ chưa có GPS fix) hãy nói rõ và gợi ý cách khắc phục. Không bịa số liệu.';
+
+    async function callGemini(key, messages) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: messages[0].content }] },
+          contents: messages.slice(1).map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }))
+        })
+      });
+      if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
+
+    async function callPollinations(messages) {
+      const res = await fetch('https://text.pollinations.ai/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'openai', messages })
+      });
+      if (!res.ok) throw new Error('Pollinations HTTP ' + res.status);
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content;
+    }
+
+    async function askLLM(question) {
+      const messages = [
+        { role: 'system', content: AI_SYSTEM_PROMPT + '\n\n[SỐ LIỆU HIỆN TẠI]\n' + buildTelemetryContext() },
+        ...chatHistory.slice(-8),
+        { role: 'user', content: question }
+      ];
+      const key = localStorage.getItem(GEMINI_KEY_STORAGE);
+      let answer;
+      if (key) {
+        try { answer = await callGemini(key, messages); } catch (e) { console.warn(e); }
+      }
+      if (!answer) {
+        try { answer = await callPollinations(messages); } catch (e) { console.warn('Pollinations:', e.message); }
+      }
+      return (answer || '').trim();
+    }
+
+    // Dự phòng khi chưa có key / mất mạng: trả lời bằng chính số liệu thật đang hiển thị
+    function localAnswer(q) {
+      const s = q.toLowerCase();
+      const t = buildTelemetryContext().split('\n');
+      if (/gps|vệ tinh|vi tri|vị trí|toạ độ|tọa độ/.test(s)) return t[3] + '. ' + t[4];
+      if (/tài xế|ngủ|buồn|ear/.test(s)) return t[2];
+      if (/khách|người|đông|mật độ|chỗ/.test(s)) return t[1];
+      if (/tuyến|lệch|route/.test(s)) return t[5];
+      return t.slice(1).join(' | ');
+    }
+
+    function setGeminiKey() {
+      const k = prompt('Dán Gemini API key (miễn phí tại aistudio.google.com/apikey).\nKey chỉ lưu trong trình duyệt của bạn:', localStorage.getItem(GEMINI_KEY_STORAGE) || '');
+      if (k === null) return;
+      if (k.trim()) { localStorage.setItem(GEMINI_KEY_STORAGE, k.trim()); pushAiMessage('🔑 Đã lưu key. AI Gemini đã sẵn sàng, hãy hỏi thử!'); }
+      else { localStorage.removeItem(GEMINI_KEY_STORAGE); pushAiMessage('Đã xoá key.'); }
+    }
+
+    async function sendPrompt(q) {
+      // Lệnh cấu hình khoá Gemini: /key AIza...
+      if (q.startsWith('/key ')) {
+        localStorage.setItem(GEMINI_KEY_STORAGE, q.slice(5).trim());
+        pushAiMessage('🔑 Đã lưu Gemini API key trong trình duyệt. Từ giờ AI sẽ dùng Gemini.');
+        return;
+      }
       pushAiMessage(q, true);
-      setTimeout(() => {
-        if (q.includes('GPS')) {
-          pushAiMessage(`Độ trôi toạ độ vi sai của NEO-6M hiện tại là ~1.2m, HDOP đạt chuẩn cho phép kiểm soát lệch tuyến chính xác.`);
-        } else if (q.includes('Tài xế')) {
-          pushAiMessage(`Tài xế đang trong trạng thái ${isDrowsy ? 'BUỒN NGỦ NGUY HIỂM' : 'TỈNH TÁO TẬP TRUNG'}, chỉ số EAR trung bình đạt ${driverEar.toFixed(2)}.`);
-        } else if (q.includes('khách')) {
-          pushAiMessage(`Mật độ hành khách hiện tại là ${countTotal}/${capacity} (${Math.round(countTotal/capacity*100)}%). Lưu lượng: ${countIn} lên, ${countOut} xuống.`);
+      const thinking = document.createElement('div');
+      thinking.className = 'chat-bubble ai';
+      thinking.innerText = '… đang phân tích số liệu xe';
+      const box = document.getElementById('chatStreamBox');
+      box.appendChild(thinking);
+      box.scrollTop = box.scrollHeight;
+      try {
+        const answer = await askLLM(q);
+        thinking.remove();
+        if (answer) {
+          pushAiMessage(answer);
+          chatHistory.push({ role: 'user', content: q }, { role: 'assistant', content: answer });
         } else {
-          pushAiMessage(`Đã xử lý yêu cầu "${q}". Toàn bộ thông số vi sai đang được lưu vết trên hệ thống.`);
+          const hasKey = !!localStorage.getItem(GEMINI_KEY_STORAGE);
+          pushAiMessage(localAnswer(q) + (hasKey ? '\n\n(Gemini không phản hồi — kiểm tra key.)' : '\n\n(Chưa có AI: bấm 🔑 góc trên của khung này để nhập Gemini key miễn phí.)'));
         }
-      }, 500);
+      } catch (e) {
+        thinking.remove();
+        console.error(e);
+        pushAiMessage(localAnswer(q) + '\n\n(Chế độ offline — bấm 🔑 để nhập Gemini key và AI sẽ phân tích sâu hơn.)');
+      }
     }
 
     function submitCopilotMessage() {
@@ -2021,7 +2124,6 @@
       sendPrompt(val);
       input.value = '';
     }
-
     function applyAiRecommendation() {
       addLog('Đã áp dụng đề xuất tối ưu phân bổ trạm từ AI Copilot.', 'gps');
       pushAiMessage('Đã đồng bộ hoá lộ trình di chuyển tối ưu tới màn hình hiển thị của xe bus01.');
