@@ -387,7 +387,8 @@
 
     /* Live Event Logs Ticker */
     .log-card {
-      max-height: 180px;
+      flex: 1;
+      min-height: 260px;
       display: flex;
       flex-direction: column;
     }
@@ -918,55 +919,6 @@
         </div>
       </div>
 
-      <!-- BusMap Timetable Card -->
-      <div class="card timetable-card">
-        <div class="card-title">
-          <span>🚏 Lộ Trình & Biểu Đồ Giờ (BusMap)</span>
-          <span style="font-size: 0.74rem; color: var(--accent-blue); font-weight: 700;" id="tripCounterText">Chuyến #01 (Đang chạy)</span>
-        </div>
-
-        <div class="timetable-header">
-          <div class="timetable-top-row">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="route-badge-pill" id="tbRouteBadge">Tuyến 08</span>
-              <span style="font-size: 0.85rem; font-weight: 700;" id="tbRouteTitle">Ký Túc Xá ĐHQG</span>
-            </div>
-            <button class="direction-badge outbound" id="btnToggleDirection" onclick="toggleDirection()" title="Bấm để đổi Chiều Đi / Chiều Về">
-              🟢 Lượt Đi (Xuất bến)
-            </button>
-          </div>
-          <div class="trip-tag" id="tbTripInfo">⏱️ 05:30 - 21:00 • Giãn cách: 15p • 63 chuyến/ngày</div>
-        </div>
-
-        <!-- BusMap Tab Switcher -->
-        <div class="busmap-tabs">
-          <button class="busmap-tab-btn active" id="tabBtnStops" onclick="switchBusMapTab('stops')">
-            🚏 Lộ Trình Trạm (<span id="stopCountBadge">0</span>)
-          </button>
-          <button class="busmap-tab-btn" id="tabBtnTimetable" onclick="switchBusMapTab('timetable')">
-            ⏰ Biểu Đồ Giờ Xuất Bến
-          </button>
-        </div>
-
-        <!-- Tab 1: Stop Timeline -->
-        <div class="stop-timeline" id="stopTimelineBox">
-          <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 12px 0;">
-            Chưa có trạm dừng. Hãy vẽ tuyến demo trên bản đồ để tạo biểu đồ trạm!
-          </div>
-        </div>
-
-        <!-- Tab 2: BusMap Timetable Grid View -->
-        <div class="timetable-grid-view" id="timetableGridView" style="display: none;">
-          <div class="timetable-meta-bar">
-            <span>📅 Lịch chạy hôm nay</span>
-            <span id="timetableActiveTripLabel" style="color: var(--accent-blue); font-weight: 600;">Chuyến #01 (05:30)</span>
-          </div>
-          <div id="timetableRowsWrap" style="display: flex; flex-direction: column; gap: 6px;">
-            <!-- Generated dynamically -->
-          </div>
-        </div>
-      </div>
-
       <!-- Live Event Terminal Logs -->
       <div class="card log-card">
         <div class="card-title">
@@ -1003,19 +955,8 @@
 
         <!-- Bảng vẽ tuyến demo -->
         <div class="route-panel" id="routePanel">
-          <div class="route-panel-title">🗺️ Tuyến Demo & BusMap</div>
+          <div class="route-panel-title">🗺️ Tuyến Demo & Giám Sát Lệch Tuyến</div>
           <div class="route-hint" id="routeHint">Chưa có tuyến.</div>
-
-          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-            <div style="width: 75px;">
-              <label style="font-size: 0.68rem; color: var(--text-muted); display: block;">Mã tuyến:</label>
-              <input type="text" id="inpRouteBadge" value="Tuyến 08" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff; border-radius: 5px; padding: 3px 6px; font-size: 0.75rem; font-weight: 700;">
-            </div>
-            <div style="flex: 1;">
-              <label style="font-size: 0.68rem; color: var(--text-muted); display: block;">Tên tuyến:</label>
-              <input type="text" id="inpRouteName" value="Ký Túc Xá ĐHQG" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff; border-radius: 5px; padding: 3px 6px; font-size: 0.75rem;">
-            </div>
-          </div>
 
           <div class="route-btns">
             <button class="route-btn primary" id="btnDraw">✏️ Vẽ tuyến</button>
@@ -1139,10 +1080,7 @@
     let route = {
       points: [],
       closed: true,
-      threshold: 25,
-      badge: 'Tuyến 08',
-      name: 'Ký Túc Xá ĐHQG',
-      direction: 'outbound'
+      threshold: 25
     };
     try {
       const saved = JSON.parse(localStorage.getItem(ROUTE_KEY));
@@ -1207,189 +1145,6 @@
         });
       }
       updateRouteHint();
-      buildBusMapTimeline();
-    }
-
-    // --- BusMap Timetable & Stop Tracking Logic ---
-    let currentTripNumber = 1;
-    let lastNearestStopIndex = 0;
-    let completedStopsCount = 0;
-
-    function buildBusMapTimeline() {
-      const box = document.getElementById('stopTimelineBox');
-      const badgeEl = document.getElementById('tbRouteBadge');
-      const titleEl = document.getElementById('tbRouteTitle');
-      const countEl = document.getElementById('stopCountBadge');
-      const pts = route.points;
-
-      if (badgeEl) badgeEl.innerText = route.badge || 'Tuyến 08';
-      if (titleEl) titleEl.innerText = route.name || 'Ký Túc Xá ĐHQG';
-      if (countEl) countEl.innerText = pts ? pts.length : 0;
-
-      updateDirectionUI();
-
-      if (!pts || pts.length < 2) {
-        box.innerHTML = `<div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 12px 0;">
-          Chưa có trạm dừng. Hãy vẽ tuyến demo trên bản đồ để tạo biểu đồ trạm!
-        </div>`;
-        return;
-      }
-
-      const isOutbound = route.direction !== 'inbound';
-      let html = '';
-      pts.forEach((pt, idx) => {
-        const isStart = idx === 0;
-        const isEnd = idx === pts.length - 1;
-        let stopLabel = `Trạm ${idx + 1}`;
-        if (isOutbound) {
-          if (isStart) stopLabel = '🚏 Bến xuất phát (Cổng KTX)';
-          else if (isEnd && route.closed) stopLabel = '🏁 Bến cuối (Vòng về Cổng KTX)';
-          else if (isEnd) stopLabel = `🏁 Bến đích (Trạm ${idx + 1})`;
-        } else {
-          if (isStart) stopLabel = '🚏 Bến xuất phát (Trạm Đích)';
-          else if (isEnd && route.closed) stopLabel = '🏁 Bến cuối (Vòng về Trạm Đích)';
-          else if (isEnd) stopLabel = `🏁 Bến đích (Cổng KTX)`;
-        }
-
-        const etaEstimate = idx === 0 ? 'Xuất phát' : `+${idx * 3} phút`;
-
-        html += `
-          <div class="stop-item" id="stopItem_${idx}">
-            <div class="stop-dot"></div>
-            <div class="stop-name">${stopLabel}</div>
-            <div class="stop-status-tag" id="stopTag_${idx}">${etaEstimate}</div>
-          </div>
-        `;
-      });
-      box.innerHTML = html;
-      updateStopProgress(lastNearestStopIndex);
-      buildBusMapTimetableGrid();
-    }
-
-    function updateStopProgress(nearestIdx) {
-      const pts = route.points;
-      if (!pts || !pts.length) return;
-
-      pts.forEach((_, idx) => {
-        const el = document.getElementById(`stopItem_${idx}`);
-        const tag = document.getElementById(`stopTag_${idx}`);
-        if (!el || !tag) return;
-
-        el.classList.remove('passed', 'current');
-        if (idx < nearestIdx) {
-          el.classList.add('passed');
-          tag.innerText = 'ĐÃ QUA ✓';
-        } else if (idx === nearestIdx) {
-          el.classList.add('current');
-          tag.innerText = 'XE ĐANG ĐẾN 🚌';
-        } else {
-          tag.innerText = `+${(idx - nearestIdx) * 3} phút`;
-        }
-      });
-    }
-
-    // Tạo lưới biểu đồ giờ chạy xuất bến chuẩn phong cách BusMap
-    function buildBusMapTimetableGrid() {
-      const wrap = document.getElementById('timetableRowsWrap');
-      if (!wrap) return;
-
-      const startMin = 5 * 60 + 30; // 05:30
-      const endMin = 21 * 60;       // 21:00
-      const interval = 15;          // 15 phút giãn cách
-
-      let tripNum = 1;
-      const hourlyGroups = {};
-
-      for (let m = startMin; m <= endMin; m += interval) {
-        const h = Math.floor(m / 60);
-        const mins = m % 60;
-        const timeStr = `${String(h).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-        const hKey = `${String(h).padStart(2, '0')}h`;
-
-        if (!hourlyGroups[hKey]) hourlyGroups[hKey] = [];
-
-        let status = 'upcoming';
-        if (tripNum < currentTripNumber) {
-          status = 'past';
-        } else if (tripNum === currentTripNumber) {
-          status = 'active';
-        } else if (tripNum === currentTripNumber + 1) {
-          status = 'next';
-        }
-
-        hourlyGroups[hKey].push({
-          num: tripNum,
-          time: timeStr,
-          status: status
-        });
-        tripNum++;
-      }
-
-      let html = '';
-      for (const [hour, trips] of Object.entries(hourlyGroups)) {
-        html += `<div class="timetable-hour-row">
-          <div class="timetable-hour-label">${hour}</div>
-          <div class="timetable-chips-wrap">`;
-        trips.forEach(t => {
-          let chipClass = `trip-chip ${t.status}`;
-          let icon = t.status === 'past' ? '✓' : (t.status === 'active' ? '🚌' : '');
-          let titleAttr = `Chuyến #${t.num} (${t.time}) - ${t.status === 'past' ? 'Đã chạy qua' : (t.status === 'active' ? 'Đang chạy' : 'Chưa xuất bến')}`;
-          html += `<button class="${chipClass}" title="${titleAttr}" onclick="selectTrip(${t.num}, '${t.time}')">
-            ${t.time} ${icon}
-          </button>`;
-        });
-        html += `</div></div>`;
-      }
-      wrap.innerHTML = html;
-
-      const activeLabel = document.getElementById('timetableActiveTripLabel');
-      if (activeLabel) {
-        activeLabel.innerText = `Chuyến #${String(currentTripNumber).padStart(2, '0')} (Đang chạy)`;
-      }
-    }
-
-    function selectTrip(num, time) {
-      currentTripNumber = num;
-      document.getElementById('tripCounterText').innerText = `Chuyến #${String(num).padStart(2, '0')} (${time})`;
-      addLog(`🚏 Đã chọn theo dõi Chuyến #${num} (Giờ xuất bến: ${time})`, 'gps');
-      buildBusMapTimetableGrid();
-      updateStopProgress(lastNearestStopIndex);
-    }
-
-    function switchBusMapTab(tab) {
-      const tabStops = document.getElementById('tabBtnStops');
-      const tabTimetable = document.getElementById('tabBtnTimetable');
-      const boxStops = document.getElementById('stopTimelineBox');
-      const boxTimetable = document.getElementById('timetableGridView');
-
-      if (tab === 'stops') {
-        tabStops.classList.add('active');
-        tabTimetable.classList.remove('active');
-        boxStops.style.display = 'flex';
-        boxTimetable.style.display = 'none';
-      } else {
-        tabTimetable.classList.add('active');
-        tabStops.classList.remove('active');
-        boxTimetable.style.display = 'flex';
-        boxStops.style.display = 'none';
-        buildBusMapTimetableGrid();
-      }
-    }
-
-    function toggleDirection() {
-      route.direction = (route.direction === 'inbound') ? 'outbound' : 'inbound';
-      saveRoute();
-      updateDirectionUI();
-      buildBusMapTimeline();
-      addLog(`🔄 Đổi hướng chạy: ${route.direction === 'outbound' ? 'Lượt Đi (Xuất bến)' : 'Lượt Về (Về bến)'}`, 'info');
-    }
-
-    function updateDirectionUI() {
-      const btn = document.getElementById('btnToggleDirection');
-      if (!btn) return;
-      const isOutbound = route.direction !== 'inbound';
-      btn.className = `direction-badge ${isOutbound ? 'outbound' : 'inbound'}`;
-      btn.innerHTML = isOutbound ? '🟢 Lượt Đi (Xuất bến)' : '🔵 Lượt Về (Về bến)';
     }
 
     function updateRouteHint() {
@@ -1510,25 +1265,6 @@
       saveRoute(); resetRouteState(); renderRoute();
     };
 
-    const inpRouteBadge = document.getElementById('inpRouteBadge');
-    if (inpRouteBadge) {
-      inpRouteBadge.value = route.badge || 'Tuyến 08';
-      inpRouteBadge.oninput = () => {
-        route.badge = inpRouteBadge.value.trim() || 'Tuyến 08';
-        saveRoute();
-        buildBusMapTimeline();
-      };
-    }
-    const inpRouteName = document.getElementById('inpRouteName');
-    if (inpRouteName) {
-      inpRouteName.value = route.name || 'Ký Túc Xá ĐHQG';
-      inpRouteName.oninput = () => {
-        route.name = inpRouteName.value.trim() || 'Ký Túc Xá ĐHQG';
-        saveRoute();
-        buildBusMapTimeline();
-      };
-    }
-
     function setText(id, text, color) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -1592,27 +1328,6 @@
       const off = evaluateRoute(p.lat, p.lon, p.hdop);
       if (!lastTrailPt || map.distance(lastTrailPt, pos) > 2) addTrailPoint(pos, off);
 
-      // Cập nhật vị trí trạm trên biểu đồ BusMap
-      if (route.points && route.points.length >= 2) {
-        let minDist = Infinity;
-        let nearest = 0;
-        route.points.forEach((pt, idx) => {
-          const d = map.distance(pos, pt);
-          if (d < minDist) { minDist = d; nearest = idx; }
-        });
-
-        if (minDist <= Math.max(route.threshold, 30)) {
-          // Phát hiện hoàn thành 1 vòng (chuyến mới)
-          if (lastNearestStopIndex === route.points.length - 1 && nearest === 0 && completedStopsCount >= route.points.length - 1) {
-            currentTripNumber++;
-            completedStopsCount = 0;
-            document.getElementById('tripCounterText').innerText = `Chuyến #${String(currentTripNumber).padStart(2, '0')} (Đang chạy)`;
-            addLog(`🎉 Hoàn thành chuyến #${currentTripNumber - 1}! Bắt đầu chuyến #${currentTripNumber}`, 'gps');
-          }
-          if (nearest > lastNearestStopIndex) completedStopsCount++;
-          lastNearestStopIndex = nearest;
-          updateStopProgress(nearest);
-        }
       }
     }
 
