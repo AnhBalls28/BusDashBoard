@@ -1327,8 +1327,6 @@
       // Kiểm tra lệch tuyến rồi thêm vào vệt đi (bỏ qua nếu đứng yên < 2 m để tránh nhiễu)
       const off = evaluateRoute(p.lat, p.lon, p.hdop);
       if (!lastTrailPt || map.distance(lastTrailPt, pos) > 2) addTrailPoint(pos, off);
-
-      }
     }
 
     // Nếu > 10 giây không nhận được gì từ ESP32 → báo mất tín hiệu
