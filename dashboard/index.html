@@ -1170,15 +1170,6 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
         <span>Demo Thử Nghiệm</span>
       </button>
-
-      <!-- User Profile Pill -->
-      <div class="user-profile">
-        <div class="avatar-circle">BA</div>
-        <div class="user-info-text">
-          <div class="user-name">Huỳnh Bảo Anh</div>
-          <div class="user-sub">MSSV: 2210060 · Nhóm Bread</div>
-        </div>
-      </div>
     </div>
   </header>
 
@@ -1436,7 +1427,7 @@
         <!-- Conversational Chat Stream -->
         <div class="chat-conversation" id="chatStreamBox">
           <div class="chat-bubble ai">
-            Xin chào Bảo Anh! Tôi là trợ lý AI giám sát xe bus. Mọi dữ liệu từ ESP32, Camera AI và GPS đang được tôi phân tích theo thời gian thực.
+            Xin chào! Tôi là trợ lý AI giám sát xe bus thông minh. Mọi dữ liệu từ ESP32, Camera AI và GPS đang được tôi phân tích theo thời gian thực.
           </div>
         </div>
       </div>
@@ -1934,9 +1925,9 @@
     }
 
     const AI_SYSTEM_PROMPT =
-      'Bạn là BusMon AI Copilot, trợ lý giám sát xe bus thông minh thời gian thực cho Đồ án 2 của sinh viên Huỳnh Bảo Anh (MSSV: 2210060, ĐH Bách Khoa TP.HCM - Khoa Điện - Điện tử; GVHD: PGS. TS. Hà Hoàng Kha). ' +
+      'Bạn là BusMon AI Copilot, trợ lý giám sát xe bus thông minh thời gian thực (Đồ án Hệ thống Giám sát Xe bus Thông minh IoT & AI). ' +
       'Nhiệm vụ: phân tích số liệu telemetry xe bus (hành khách từ camera AI YOLO/Haar, ngủ gật từ MediaPipe EAR, toạ độ GPS từ ESP32 NEO-6M trên MQTT). ' +
-      'Trả lời bằng tiếng Việt chuyên nghiệp, ngắn gọn (2-4 câu), chính xác theo số liệu thực tế được cung cấp. Nếu người dùng hỏi câu hỏi thông thường, trả lời tự nhiên và thông minh.';
+      'Trả lời bằng tiếng Việt chuyên nghiệp, ngắn gọn (2-4 câu), chính xác theo số liệu thực tế được cung cấp. Nếu người dùng hỏi câu hỏi thông thường, trả lời tự nhiên và thông minh, không xưng tên riêng người dùng.';
 
     async function callGemini(key, messages) {
       let cleanKey = (key || '').trim();
