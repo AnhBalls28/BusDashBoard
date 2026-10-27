@@ -1473,8 +1473,9 @@
             <div class="route-btn-grid">
               <button class="btn-micro primary" id="btnDraw">✏️ Vẽ tuyến</button>
               <button class="btn-micro" id="btnUndo">↩️ Bỏ điểm</button>
+              <button class="btn-micro" id="btnShareRoute" style="color: var(--accent-cyan); font-weight: 600;" title="Sao chép link chia sẻ tuyến sang iPhone">🔗 Chia sẻ</button>
               <button class="btn-micro danger" id="btnClear">🗑️ Xoá tuyến</button>
-              <button class="btn-micro" id="btnClearTrail">🧹 Xoá vệt đi</button>
+              <button class="btn-micro" id="btnClearTrail" style="grid-column: span 2;">🧹 Xoá vệt di chuyển</button>
             </div>
 
             <div class="route-options-row">
@@ -1723,6 +1724,32 @@
       if (saved && Array.isArray(saved.points)) route = { ...route, ...saved };
     } catch (e) {}
 
+    // Tự động nhận diện và nạp tuyến khi mở link được chia sẻ từ laptop (#route=...)
+    try {
+      let imported = null;
+      if (window.location.hash && window.location.hash.startsWith('#route=')) {
+        imported = JSON.parse(decodeURIComponent(window.location.hash.substring(7)));
+      } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('route')) {
+          imported = JSON.parse(decodeURIComponent(urlParams.get('route')));
+        }
+      }
+      if (imported) {
+        if (Array.isArray(imported)) {
+          route.points = imported;
+        } else if (Array.isArray(imported.points)) {
+          route = { ...route, ...imported };
+        }
+        localStorage.setItem(ROUTE_KEY, JSON.stringify(route));
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi phân tích tuyến chia sẻ:', err);
+    }
+
     const routeLayer = L.layerGroup().addTo(map);
     let drawing = false;
     let routeState = 'unknown';
@@ -1876,6 +1903,26 @@
       if (route.points.length && !confirm('Xoá toàn bộ tuyến giám sát?')) return;
       route.points = []; saveRoute(); resetRouteState(); renderRoute();
     };
+
+    const btnShareRoute = document.getElementById('btnShareRoute');
+    if (btnShareRoute) {
+      btnShareRoute.onclick = () => {
+        if (!route.points || route.points.length < 2) {
+          alert('Chưa có tuyến đường! Vui lòng bấm "✏️ Vẽ tuyến" để vẽ ít nhất 2 điểm trước khi chia sẻ.');
+          return;
+        }
+        const shareUrl = window.location.origin + window.location.pathname + '#route=' + encodeURIComponent(JSON.stringify(route));
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('✅ ĐÃ SAO CHÉP LINK TUYẾN!\n\n👉 Bạn hãy gửi link này qua Zalo / Messenger / AirDrop sang iPhone, mở ra bằng Safari/Chrome là tuyến sẽ lập tức xuất hiện trên iPhone!');
+          }).catch(() => {
+            prompt('Sao chép link này và mở trên iPhone:', shareUrl);
+          });
+        } else {
+          prompt('Sao chép link này và mở trên iPhone:', shareUrl);
+        }
+      };
+    }
 
     document.getElementById('btnClearTrail').onclick = () => {
       trailLayer.clearLayers(); trailSeg = null; trailSegState = null; lastTrailPt = null;
