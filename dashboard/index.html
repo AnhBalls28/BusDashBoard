@@ -1856,6 +1856,8 @@
       route.points.push([+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)]);
       saveRoute(); resetRouteState(); renderRoute();
     });
+    // Tự động tính lại độ rộng dải bóng tím (corridor) đúng chuẩn số mét thực địa khi zoom in / zoom out
+    map.on('zoomend', renderRoute);
 
     document.getElementById('btnDraw').onclick = () => {
       drawing = !drawing;
