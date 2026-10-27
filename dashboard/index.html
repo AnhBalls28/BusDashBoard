@@ -1569,8 +1569,8 @@
       iconAnchor: [16, 38]
     });
 
-    const busMarker = L.marker([defaultLat, defaultLon], { icon: busRedPinIcon, zIndexOffset: 1000 }).addTo(map);
-    busMarker.bindPopup("<b>📍 Xe Bus 01 (BusMon)</b><br>Toạ độ từ ESP32 + NEO-6M GPS");
+    const busMarker = L.marker([defaultLat, defaultLon], { icon: busRedPinIcon, zIndexOffset: 1000 });
+    busMarker.bindPopup("<b>📍 Xe Bus 01 (BusMon)</b><br>Toạ độ thực tế từ ESP32 + NEO-6M");
 
     // Vệt đường đi thật
     const TRAIL_STORAGE_KEY = 'busmon_saved_trail_v1';
@@ -1864,7 +1864,7 @@
 
       const pos = [p.lat, p.lon];
       busMarker.setLatLng(pos);
-      if (!hasFirstFix) {
+      if (!hasFirstFix || !map.hasLayer(busMarker)) {
         busMarker.addTo(map);
         if (route.points.length < 2) map.setView(pos, 18);
         hasFirstFix = true;
@@ -2312,14 +2312,12 @@
       countTotal = 0;
       updatePassengerUI(0, 0, 0, capacity);
 
-      // 5. Đưa xe bus về trạm đầu tiên của tuyến (hoặc vị trí mặc định)
-      if (route.points && route.points.length >= 1) {
-        const startPos = route.points[0];
-        busMarker.setLatLng(startPos);
-        map.panTo(startPos);
-      } else {
-        busMarker.setLatLng([defaultLat, defaultLon]);
-        map.panTo([defaultLat, defaultLon]);
+      // 5. Nếu chưa có toạ độ GPS thật từ ESP32: gỡ marker ra khỏi bản đồ để không gây hiểu nhầm toạ độ ảo
+      if (!hasFirstFix) {
+        if (map.hasLayer(busMarker)) map.removeLayer(busMarker);
+        setRouteUI(null);
+      } else if (lastTrailPt) {
+        busMarker.setLatLng(lastTrailPt);
       }
 
       // 6. Xoá sạch vệt di chuyển giả lập
