@@ -1400,7 +1400,6 @@
               <button class="btn-micro" id="btnUndo">↩️ Bỏ điểm</button>
               <button class="btn-micro danger" id="btnClear">🗑️ Xoá tuyến</button>
               <button class="btn-micro" id="btnClearTrail">🧹 Xoá vệt đi</button>
-              <button class="btn-micro" id="btnLocateUser" onclick="locateUser(true)" style="grid-column: span 2; background: rgba(239, 68, 68, 0.16); border-color: rgba(239, 68, 68, 0.45); color: #fca5a5; font-weight: 600;">📍 Vị trí của tôi (Red Pin)</button>
             </div>
 
             <div class="route-options-row">
@@ -1559,95 +1558,19 @@
     L.control.layers({ '🌙 Bản đồ tối': darkLayer, '🛰️ Ảnh vệ tinh': satLayer }, null, { position: 'bottomright' }).addTo(map);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Custom Icon Xe Bus Fusedash
-    const busIcon = L.divIcon({
-      className: 'custom-bus-container',
-      html: '<div class="bus-marker-dot">🚌</div>',
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
-    });
-
-    const busMarker = L.marker([defaultLat, defaultLon], { icon: busIcon, zIndexOffset: 1000 }).addTo(map);
-    busMarker.bindPopup("<b>Xe Bus 01 (BusMon)</b><br>ESP32 + NEO-6M (Sẵn sàng)");
-
-    // Google Maps Style Red Pin cho Vị Trí Của Bạn (My Location)
-    const redPinIcon = L.divIcon({
+    // Custom Icon Xe Bus Fusedash: Classic Google Maps Red Pin có icon xe bus
+    const busRedPinIcon = L.divIcon({
       className: 'user-red-pin-container',
       html: `
-        <div class="user-red-pin"><div class="user-red-pin-inner"></div></div>
+        <div class="user-red-pin"><div class="user-red-pin-inner" style="font-size: 13px;">🚌</div></div>
         <div class="user-red-pin-pulse"></div>
       `,
-      iconSize: [28, 36],
-      iconAnchor: [14, 34]
+      iconSize: [32, 40],
+      iconAnchor: [16, 38]
     });
 
-    let userLocationMarker = null;
-    let watchLocationId = null;
-
-    function setOrUpdateRedPin(lat, lon, label, zoomTo = true) {
-      if (!userLocationMarker) {
-        userLocationMarker = L.marker([lat, lon], {
-          icon: redPinIcon,
-          zIndexOffset: 900,
-          draggable: true
-        }).addTo(map);
-
-        userLocationMarker.on('dragend', function (e) {
-          const pt = e.target.getLatLng();
-          userLocationMarker.setPopupContent(`<b>📍 Vị trí bạn đã kéo</b><br>Toạ độ: ${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}`).openPopup();
-          addLog(`📍 Bạn đã kéo Red Pin đến: ${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)}`, 'gps');
-        });
-      } else {
-        userLocationMarker.setLatLng([lat, lon]);
-      }
-      userLocationMarker.bindPopup(`<b>${label}</b><br>Toạ độ: ${lat.toFixed(6)}, ${lon.toFixed(6)}<br><small style="color:#94a3b8;">(Mẹo: Bạn có thể kéo thả ghim đỏ này đến vị trí bất kỳ!)</small>`);
-      if (zoomTo) map.setView([lat, lon], 16);
-    }
-
-    async function fallbackIpLocation(zoomTo = true) {
-      try {
-        const res = await fetch('https://ipwho.is/');
-        const data = await res.json();
-        if (data && data.latitude && data.longitude) {
-          setOrUpdateRedPin(data.latitude, data.longitude, `📍 Vị trí mạng IP (${data.city || 'TP.HCM'})`, zoomTo);
-          addLog(`📍 Trình duyệt/Windows chặn GPS. Đã định vị Red Pin qua IP mạng (${data.city || 'TP.HCM'}). Bạn có thể kéo ghim đến chỗ bạn đứng!`, 'gps');
-          return;
-        }
-      } catch (e) {
-        console.warn('Fallback IP error:', e);
-      }
-      const center = map.getCenter();
-      setOrUpdateRedPin(center.lat, center.lng, '📍 Vị trí của bạn (Kéo thả)', zoomTo);
-      addLog(`📍 Đã ghim Red Pin ngay giữa bản đồ. Bạn có thể kéo thả ghim đến vị trí mong muốn!`, 'gps');
-    }
-
-    function locateUser(zoomTo = true) {
-      if (!('geolocation' in navigator)) {
-        fallbackIpLocation(zoomTo);
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-          setOrUpdateRedPin(lat, lon, `📍 Vị trí GPS của bạn${acc ? ' (~' + acc + 'm)' : ''}`, zoomTo);
-          addLog(`📍 Đã ghim Red Pin GPS của bạn: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, 'gps');
-
-          if (watchLocationId === null) {
-            watchLocationId = navigator.geolocation.watchPosition((p) => {
-              if (userLocationMarker) userLocationMarker.setLatLng([p.coords.latitude, p.coords.longitude]);
-            }, null, { enableHighAccuracy: false });
-          }
-        },
-        async (err) => {
-          console.warn('Lỗi Geolocation:', err);
-          // Fallback tự động khi Vivaldi / Windows chặn quyền thiết bị
-          await fallbackIpLocation(zoomTo);
-        },
-        { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
-      );
-    }
+    const busMarker = L.marker([defaultLat, defaultLon], { icon: busRedPinIcon, zIndexOffset: 1000 }).addTo(map);
+    busMarker.bindPopup("<b>📍 Xe Bus 01 (BusMon)</b><br>Toạ độ từ ESP32 + NEO-6M GPS");
 
     // Vệt đường đi thật
     const TRAIL_STORAGE_KEY = 'busmon_saved_trail_v1';
@@ -2413,11 +2336,10 @@
       addLog(`⏹ Đã huỷ chế độ mô phỏng và đặt lại hệ thống về ban đầu.`, 'gps');
     }
 
-    // Khởi tạo đồ thị và định vị ban đầu
+    // Khởi tạo đồ thị ban đầu
     renderRoute();
     setRouteUI(null);
     drawDonutGauge(0, 30);
-    setTimeout(() => locateUser(false), 800); // Thử ghim Red Pin vị trí của bạn ngay khi mở trang
     
   </script>
 </body>
