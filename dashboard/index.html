@@ -1578,6 +1578,10 @@
     let trailSeg = null, trailSegState = null, lastTrailPt = null;
     let savedTrail = [];
     let hasFirstFix = false;
+    let hasRealGpsFix = false;
+    let lastRealGpsPos = null;
+    let lastRealGpsPayload = null;
+    let isDemoRunning = false;
     let lastFixState = null;
     let lastGpsAt = 0;
 
@@ -1829,51 +1833,68 @@
 
     // --- 4. Xử Lý Telemetry GPS & Trạng Thái ---
     function handleGps(p) {
-      lastGpsAt = Date.now();
-      const sats = p.sats ?? '--';
-      const hdop = p.hdop != null && p.hdop < 99 ? p.hdop.toFixed(1) : '--';
-      document.getElementById('satInfo').innerText = `${sats} Sats / ${hdop} HDOP`;
-      document.getElementById('liveSats').innerText = sats;
+      if (!p.isSimulated) {
+        lastGpsAt = Date.now();
+        const sats = p.sats ?? '--';
+        const hdop = p.hdop != null && p.hdop < 99 ? p.hdop.toFixed(1) : '--';
+        document.getElementById('satInfo').innerText = `${sats} Sats / ${hdop} HDOP`;
+        document.getElementById('liveSats').innerText = sats;
 
-      const hasPos = p.fix !== false && p.lat != null && p.lon != null;
-      let state = hasPos ? 'fix' : ((p.chars != null && p.chars < 10) ? 'nodata' : 'searching');
+        const hasPos = p.fix !== false && p.lat != null && p.lon != null;
+        let state = hasPos ? 'fix' : ((p.chars != null && p.chars < 10) ? 'nodata' : 'searching');
 
-      if (state !== lastFixState) {
-        if (state === 'fix') addLog(`✅ GPS đã có toạ độ vệ tinh (${sats} vệ tinh)`, 'gps');
-        if (state === 'searching') addLog(`🔍 GPS đang tìm kiếm vệ tinh...`, 'gps');
-        if (state === 'nodata') addLog(`⚠️ ESP32 chưa nhận được NMEA từ GPS NEO-6M`, 'alert');
-        lastFixState = state;
+        if (state !== lastFixState) {
+          if (state === 'fix') addLog(`✅ GPS đã có toạ độ vệ tinh (${sats} vệ tinh)`, 'gps');
+          if (state === 'searching') addLog(`🔍 GPS đang tìm kiếm vệ tinh...`, 'gps');
+          if (state === 'nodata') addLog(`⚠️ ESP32 chưa nhận được NMEA từ GPS NEO-6M`, 'alert');
+          lastFixState = state;
+        }
+
+        const fixBadge = document.getElementById('fixStatusBadge');
+        if (state === 'nodata') {
+          fixBadge.innerText = 'Kiểm tra dây GPS';
+          fixBadge.className = 'badge-pill badge-coral';
+          return;
+        }
+        if (state === 'searching') {
+          fixBadge.innerText = 'Đang tìm vệ tinh';
+          fixBadge.className = 'badge-pill badge-coral';
+          return;
+        }
+
+        // Đã có toạ độ thật từ ESP32
+        hasRealGpsFix = true;
+        lastRealGpsPos = [p.lat, p.lon];
+        lastRealGpsPayload = p;
+        fixBadge.innerText = 'Đã định vị 3D';
+        fixBadge.className = 'badge-pill badge-green';
+        document.getElementById('liveSpeed').innerText = (p.speed ?? 0).toFixed(1);
+
+        // Nếu người dùng đang chạy Demo mô phỏng thì không ngắt quãng xe demo
+        if (isDemoRunning) return;
       }
-
-      const fixBadge = document.getElementById('fixStatusBadge');
-      if (state === 'nodata') {
-        fixBadge.innerText = 'Kiểm tra dây GPS';
-        fixBadge.className = 'badge-pill badge-coral';
-        return;
-      }
-      if (state === 'searching') {
-        fixBadge.innerText = 'Đang tìm vệ tinh';
-        fixBadge.className = 'badge-pill badge-coral';
-        return;
-      }
-
-      // Đã có toạ độ thật
-      fixBadge.innerText = 'Đã định vị 3D';
-      fixBadge.className = 'badge-pill badge-green';
-      document.getElementById('liveSpeed').innerText = (p.speed ?? 0).toFixed(1);
 
       const pos = [p.lat, p.lon];
       busMarker.setLatLng(pos);
-      if (!hasFirstFix || !map.hasLayer(busMarker)) {
+      if (!map.hasLayer(busMarker)) {
         busMarker.addTo(map);
+      }
+
+      if (!p.isSimulated && !hasFirstFix) {
         if (route.points.length < 2) map.setView(pos, 18);
         hasFirstFix = true;
-      } else if (!map.getBounds().pad(-0.2).contains(pos)) {
+      } else if (!p.isSimulated && !map.getBounds().pad(-0.2).contains(pos)) {
         map.panTo(pos);
       }
 
       const off = evaluateRoute(p.lat, p.lon, p.hdop);
-      if (!lastTrailPt || map.distance(lastTrailPt, pos) > 2) addTrailPoint(pos, off);
+      if (!lastTrailPt || map.distance(lastTrailPt, pos) > 2) {
+        if (p.isSimulated) {
+          addTrailPointVisual(pos, off);
+        } else {
+          addTrailPoint(pos, off);
+        }
+      }
     }
 
     function updatePassengerUI(pIn, pOut, pTotal, pCap = 30) {
@@ -2241,7 +2262,8 @@
         speed: Math.max(15, fakeSpeed),
         sats: 9,
         hdop: 1.0,
-        fix: true
+        fix: true,
+        isSimulated: true
       });
     }
 
@@ -2254,6 +2276,7 @@
         // Đang chạy -> Tạm dừng (Pause)
         clearInterval(simTimer);
         simTimer = null;
+        isDemoRunning = false;
         if (btnPlay) {
           btnPlay.classList.remove('running');
           btnPlay.classList.add('paused');
@@ -2265,6 +2288,7 @@
         addLog(`⏸ Đã tạm dừng xe bus mô phỏng. Bấm "Tiếp Tục" để chạy tiếp.`, 'gps');
       } else {
         // Bắt đầu chạy hoặc tiếp tục chạy
+        isDemoRunning = true;
         stepSimulatedBus();
         simTimer = setInterval(stepSimulatedBus, 1200);
         if (btnPlay) {
@@ -2287,6 +2311,7 @@
     // Điều khiển Demo: Huỷ và đặt lại mô phỏng hoàn toàn (Cancel / Reset)
     function cancelDemo() {
       // 1. Dừng timer
+      isDemoRunning = false;
       if (simTimer) {
         clearInterval(simTimer);
         simTimer = null;
@@ -2312,26 +2337,49 @@
       countTotal = 0;
       updatePassengerUI(0, 0, 0, capacity);
 
-      // 5. Nếu chưa có toạ độ GPS thật từ ESP32: gỡ marker ra khỏi bản đồ để không gây hiểu nhầm toạ độ ảo
-      if (!hasFirstFix) {
-        if (map.hasLayer(busMarker)) map.removeLayer(busMarker);
-        setRouteUI(null);
-      } else if (lastTrailPt) {
-        busMarker.setLatLng(lastTrailPt);
-      }
-
-      // 6. Xoá sạch vệt di chuyển giả lập
+      // 5. Xoá vệt di chuyển mô phỏng trên bản đồ
       trailLayer.clearLayers();
       trailSeg = null;
       trailSegState = null;
       lastTrailPt = null;
-      savedTrail = [];
-      try { localStorage.removeItem(TRAIL_STORAGE_KEY); } catch (e) {}
+
+      // Khôi phục lại vệt GPS thật nếu trước đó đã lưu
+      if (savedTrail && savedTrail.length) {
+        savedTrail.forEach(pt => addTrailPointVisual([pt.lat, pt.lon], pt.off));
+      }
+
+      // 6. XỬ LÝ GHIM XE BUS:
+      if (hasRealGpsFix && lastRealGpsPos) {
+        // Đã có toạ độ thật: đưa ghim trở về đúng toạ độ thực của ESP32
+        busMarker.setLatLng(lastRealGpsPos);
+        if (!map.hasLayer(busMarker)) busMarker.addTo(map);
+        if (lastRealGpsPayload) {
+          document.getElementById('liveSpeed').innerText = (lastRealGpsPayload.speed ?? 0).toFixed(1);
+          document.getElementById('liveSats').innerText = lastRealGpsPayload.sats ?? '--';
+          document.getElementById('satInfo').innerText = `${lastRealGpsPayload.sats ?? '--'} Sats / ${(lastRealGpsPayload.hdop != null && lastRealGpsPayload.hdop < 99) ? lastRealGpsPayload.hdop.toFixed(1) : '--'} HDOP`;
+          const fixBadge = document.getElementById('fixStatusBadge');
+          fixBadge.innerText = 'Đã định vị 3D';
+          fixBadge.className = 'badge-pill badge-green';
+        }
+      } else {
+        // CHƯA CÓ TOẠ ĐỘ GPS THẬT -> GỠ BỎ HOÀN TOÀN GHIM RA KHỎI BẢN ĐỒ!
+        if (map.hasLayer(busMarker)) map.removeLayer(busMarker);
+        setRouteUI(null);
+        document.getElementById('liveSpeed').innerText = '0.0';
+        const fixBadge = document.getElementById('fixStatusBadge');
+        if (lastFixState === 'searching') {
+          fixBadge.innerText = 'Đang tìm vệ tinh';
+          fixBadge.className = 'badge-pill badge-coral';
+        } else if (lastFixState === 'nodata') {
+          fixBadge.innerText = 'Kiểm tra dây GPS';
+          fixBadge.className = 'badge-pill badge-coral';
+        }
+      }
 
       // 7. Reset trạng thái lộ trình
       resetRouteState();
 
-      addLog(`⏹ Đã huỷ chế độ mô phỏng và đặt lại hệ thống về ban đầu.`, 'gps');
+      addLog(`⏹ Đã huỷ chế độ mô phỏng và đưa bản đồ về trạng thái thực tế.`, 'gps');
     }
 
     // Khởi tạo đồ thị ban đầu
