@@ -214,6 +214,16 @@
       filter: brightness(1.1);
     }
 
+    .btn-action.primary-purple.running {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
+      animation: pulseDemo 1.5s infinite;
+    }
+    @keyframes pulseDemo {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
     .user-profile {
       display: flex;
       align-items: center;
@@ -1166,7 +1176,7 @@
       </div>
 
       <!-- Quick Interactive Demo Button -->
-      <button class="btn-action primary-purple" onclick="triggerSimulatedEvent()">
+      <button class="btn-action primary-purple" id="btnDemoSim" onclick="triggerSimulatedEvent()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
         <span>Demo Thử Nghiệm</span>
       </button>
@@ -1612,6 +1622,8 @@
       routeState = 'unknown';
       offCount = onCount = 0;
       setRouteUI(null);
+      simSegIdx = 0;
+      simT = 0.0;
     }
 
     function setRouteUI(isOff, dist) {
@@ -2099,20 +2111,93 @@
       }
     });
 
-    // Nút Demo Thử Nghiệm nhanh
-    function triggerSimulatedEvent() {
-      const simIn = countIn + 1;
-      const simTotal = simIn - countOut;
-      updatePassengerUI(simIn, countOut, simTotal, 30);
-      addLog(`[DEMO] 1 hành khách vừa lên xe qua cửa trước.`, 'in');
-      
-      // Giả lập toạ độ di chuyển nhẹ quanh Bách Khoa
-      const fakeLat = defaultLat + (Math.random() - 0.5) * 0.003;
-      const fakeLon = defaultLon + (Math.random() - 0.5) * 0.003;
+    // Biến điều khiển xe bus giả lập chạy chính xác trên tuyến bạn vẽ
+    let simSegIdx = 0;
+    let simT = 0.0;
+    let simTimer = null;
+
+    function stepSimulatedBus() {
+      const segs = routeSegments();
+      let fakeLat, fakeLon;
+
+      if (segs.length > 0) {
+        // Tuyến người dùng vẽ: Xe chạy chính xác dọc theo từng mét của tuyến đường!
+        if (simSegIdx >= segs.length) simSegIdx = 0;
+        const [a, b] = segs[simSegIdx];
+
+        fakeLat = a[0] + (b[0] - a[0]) * simT;
+        fakeLon = a[1] + (b[1] - a[1]) * simT;
+
+        // Tiến bước tiếp theo dọc theo đoạn thẳng giữa 2 trạm (5 bước mịn/đoạn)
+        simT += 0.20;
+        if (simT > 1.0) {
+          simT = 0.0;
+          simSegIdx = (simSegIdx + 1) % segs.length;
+        }
+
+        addLog(`[DEMO] Xe bus đang di chuyển chính xác trên tuyến (Đoạn ${simSegIdx + 1}/${segs.length})`, 'gps');
+      } else {
+        // Chưa vẽ tuyến: chạy vòng quanh ĐH Bách Khoa
+        simT += 0.25;
+        fakeLat = defaultLat + Math.sin(simT) * 0.0015;
+        fakeLon = defaultLon + Math.cos(simT) * 0.0015;
+        addLog(`[DEMO] Chưa có tuyến: Bấm "Vẽ tuyến" trên bản đồ để xe bus chạy đúng lộ trình của bạn!`, 'gps');
+      }
+
+      // Giả lập dao động khách lên / xuống tự nhiên
+      if (Math.random() > 0.6) {
+        if (Math.random() > 0.45 && countTotal < capacity) {
+          countIn++;
+          countTotal++;
+          addLog(`[DEMO] 1 hành khách vừa lên xe. Hiện có: ${countTotal}/${capacity}`, 'in');
+        } else if (countTotal > 0) {
+          countOut++;
+          countTotal--;
+          addLog(`[DEMO] 1 hành khách vừa xuống xe. Hiện có: ${countTotal}/${capacity}`, 'out');
+        }
+        updatePassengerUI(countIn, countOut, countTotal, capacity);
+      }
+
+      // Vận tốc xe bus chạy mượt mà 24 - 34 km/h
+      const fakeSpeed = 26.0 + Math.sin(Date.now() / 2500) * 7.0;
       handleGps({
-        lat: fakeLat, lon: fakeLon, speed: 28.5 + Math.random() * 5,
-        sats: 8, hdop: 1.1, fix: true
+        lat: fakeLat,
+        lon: fakeLon,
+        speed: Math.max(15, fakeSpeed),
+        sats: 9,
+        hdop: 1.0,
+        fix: true
       });
+    }
+
+    // Nút Demo Thử Nghiệm: Bấm lần 1 bắt đầu chạy tuần hoàn dọc tuyến, bấm lần 2 dừng lại
+    function triggerSimulatedEvent() {
+      const btn = document.getElementById('btnDemoSim');
+      if (simTimer) {
+        // Đang chạy -> Tạm dừng
+        clearInterval(simTimer);
+        simTimer = null;
+        if (btn) {
+          btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>Demo Thử Nghiệm</span>
+          `;
+          btn.classList.remove('running');
+        }
+        addLog(`[DEMO] Đã tạm dừng xe bus mô phỏng.`, 'gps');
+      } else {
+        // Bắt đầu chạy ngay lập tức 1 bước, sau đó tự động chạy mỗi 1.2s dọc tuyến
+        stepSimulatedBus();
+        simTimer = setInterval(stepSimulatedBus, 1200);
+        if (btn) {
+          btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            <span>Dừng Mô Phỏng</span>
+          `;
+          btn.classList.add('running');
+        }
+        addLog(`[DEMO] Đã kích hoạt xe bus chạy tự động dọc theo tuyến đường bạn vẽ!`, 'gps');
+      }
     }
 
     // Khởi tạo đồ thị mặc định
