@@ -214,14 +214,79 @@
       filter: brightness(1.1);
     }
 
+    .demo-btn-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-action.btn-cancel-demo {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+    .btn-action.btn-cancel-demo:hover {
+      background: rgba(239, 68, 68, 0.25);
+      color: #ffffff;
+      border-color: #ef4444;
+    }
+
     .btn-action.primary-purple.running {
       background: linear-gradient(135deg, #ef4444, #dc2626);
       box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
       animation: pulseDemo 1.5s infinite;
     }
+
+    .btn-action.primary-purple.paused {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+      animation: none;
+    }
+
     @keyframes pulseDemo {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.03); }
+    }
+
+    /* Google Maps style Red Location Pin */
+    .user-red-pin-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      filter: drop-shadow(0 4px 10px rgba(239, 68, 68, 0.6));
+    }
+    .user-red-pin {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .user-red-pin-inner {
+      transform: rotate(45deg);
+      width: 8px;
+      height: 8px;
+      background: #ffffff;
+      border-radius: 50%;
+    }
+    .user-red-pin-pulse {
+      position: absolute;
+      bottom: -4px;
+      width: 18px;
+      height: 6px;
+      background: rgba(239, 68, 68, 0.5);
+      border-radius: 50%;
+      animation: userPinPulse 2s infinite ease-out;
+    }
+    @keyframes userPinPulse {
+      0% { transform: scale(0.6); opacity: 0.9; }
+      100% { transform: scale(2.2); opacity: 0; }
     }
 
     .user-profile {
@@ -1175,11 +1240,18 @@
         <span id="mqttStatusText">Đã kết nối Cloud Broker</span>
       </div>
 
-      <!-- Quick Interactive Demo Button -->
-      <button class="btn-action primary-purple" id="btnDemoSim" onclick="triggerSimulatedEvent()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-        <span>Demo Thử Nghiệm</span>
-      </button>
+      <!-- Demo Controller Button Group -->
+      <div class="demo-btn-group">
+        <button class="btn-action primary-purple" id="btnDemoPlay" onclick="toggleDemoPlay()" title="Chạy hoặc Tạm dừng mô phỏng">
+          <svg id="demoPlayIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span id="demoPlayText">Chạy Demo</span>
+        </button>
+
+        <button class="btn-action btn-cancel-demo" id="btnDemoReset" onclick="cancelDemo()" title="Huỷ và đưa mô phỏng về trạng thái ban đầu">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
+          <span>Huỷ Demo</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -1328,6 +1400,7 @@
               <button class="btn-micro" id="btnUndo">↩️ Bỏ điểm</button>
               <button class="btn-micro danger" id="btnClear">🗑️ Xoá tuyến</button>
               <button class="btn-micro" id="btnClearTrail">🧹 Xoá vệt đi</button>
+              <button class="btn-micro" id="btnLocateUser" onclick="locateUser(true)" style="grid-column: span 2; background: rgba(239, 68, 68, 0.16); border-color: rgba(239, 68, 68, 0.45); color: #fca5a5; font-weight: 600;">📍 Vị trí của tôi (Red Pin)</button>
             </div>
 
             <div class="route-options-row">
@@ -1494,8 +1567,61 @@
       iconAnchor: [18, 18]
     });
 
-    const busMarker = L.marker([defaultLat, defaultLon], { icon: busIcon, zIndexOffset: 1000 });
-    busMarker.bindPopup("<b>Xe Bus 01 (BusMon)</b><br>ESP32 + NEO-6M");
+    const busMarker = L.marker([defaultLat, defaultLon], { icon: busIcon, zIndexOffset: 1000 }).addTo(map);
+    busMarker.bindPopup("<b>Xe Bus 01 (BusMon)</b><br>ESP32 + NEO-6M (Sẵn sàng)");
+
+    // Google Maps Style Red Pin cho Vị Trí Của Bạn (My Location)
+    const redPinIcon = L.divIcon({
+      className: 'user-red-pin-container',
+      html: `
+        <div class="user-red-pin"><div class="user-red-pin-inner"></div></div>
+        <div class="user-red-pin-pulse"></div>
+      `,
+      iconSize: [28, 36],
+      iconAnchor: [14, 34]
+    });
+
+    let userLocationMarker = null;
+    let watchLocationId = null;
+
+    function locateUser(zoomTo = true) {
+      if (!('geolocation' in navigator)) {
+        addLog('Trình duyệt không hỗ trợ Geolocation để tìm vị trí.', 'alert');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+
+          if (!userLocationMarker) {
+            userLocationMarker = L.marker([lat, lon], { icon: redPinIcon, zIndexOffset: 900 }).addTo(map);
+            userLocationMarker.bindPopup(`<b>📍 Vị trí hiện tại của bạn</b><br>Toạ độ: ${lat.toFixed(6)}, ${lon.toFixed(6)}${acc ? '<br>Độ chính xác: ~' + acc + 'm' : ''}`);
+          } else {
+            userLocationMarker.setLatLng([lat, lon]);
+          }
+
+          if (zoomTo) {
+            map.setView([lat, lon], 16);
+          }
+          addLog(`📍 Đã ghim Red Pin vị trí của bạn: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, 'gps');
+
+          if (watchLocationId === null) {
+            watchLocationId = navigator.geolocation.watchPosition((p) => {
+              const uLat = p.coords.latitude;
+              const uLon = p.coords.longitude;
+              if (userLocationMarker) userLocationMarker.setLatLng([uLat, uLon]);
+            }, null, { enableHighAccuracy: true });
+          }
+        },
+        (err) => {
+          console.warn('Lỗi Geolocation:', err.message);
+          addLog(`📍 Hãy bật Cho Phép Vị Trí (Location) trên trình duyệt để ghim Red Pin nơi bạn đang đứng.`, 'gps');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      );
+    }
 
     // Vệt đường đi thật
     const TRAIL_STORAGE_KEY = 'busmon_saved_trail_v1';
@@ -2170,40 +2296,102 @@
       });
     }
 
-    // Nút Demo Thử Nghiệm: Bấm lần 1 bắt đầu chạy tuần hoàn dọc tuyến, bấm lần 2 dừng lại
-    function triggerSimulatedEvent() {
-      const btn = document.getElementById('btnDemoSim');
+    // Điều khiển Demo: Chạy (Play) / Tạm Dừng (Pause)
+    function toggleDemoPlay() {
+      const btnPlay = document.getElementById('btnDemoPlay');
+      const textEl = document.getElementById('demoPlayText');
+
       if (simTimer) {
-        // Đang chạy -> Tạm dừng
+        // Đang chạy -> Tạm dừng (Pause)
         clearInterval(simTimer);
         simTimer = null;
-        if (btn) {
-          btn.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            <span>Demo Thử Nghiệm</span>
+        if (btnPlay) {
+          btnPlay.classList.remove('running');
+          btnPlay.classList.add('paused');
+          btnPlay.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span id="demoPlayText">Tiếp Tục</span>
           `;
-          btn.classList.remove('running');
         }
-        addLog(`[DEMO] Đã tạm dừng xe bus mô phỏng.`, 'gps');
+        addLog(`⏸ Đã tạm dừng xe bus mô phỏng. Bấm "Tiếp Tục" để chạy tiếp.`, 'gps');
       } else {
-        // Bắt đầu chạy ngay lập tức 1 bước, sau đó tự động chạy mỗi 1.2s dọc tuyến
+        // Bắt đầu chạy hoặc tiếp tục chạy
         stepSimulatedBus();
         simTimer = setInterval(stepSimulatedBus, 1200);
-        if (btn) {
-          btn.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-            <span>Dừng Mô Phỏng</span>
+        if (btnPlay) {
+          btnPlay.classList.remove('paused');
+          btnPlay.classList.add('running');
+          btnPlay.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            <span id="demoPlayText">Tạm Dừng</span>
           `;
-          btn.classList.add('running');
         }
-        addLog(`[DEMO] Đã kích hoạt xe bus chạy tự động dọc theo tuyến đường bạn vẽ!`, 'gps');
+        addLog(`▶ Đang chạy mô phỏng xe bus dọc theo tuyến đường!`, 'gps');
       }
     }
 
-    // Khởi tạo đồ thị mặc định
+    // Tương thích ngược nếu còn gọi hàm cũ
+    function triggerSimulatedEvent() {
+      toggleDemoPlay();
+    }
+
+    // Điều khiển Demo: Huỷ và đặt lại mô phỏng hoàn toàn (Cancel / Reset)
+    function cancelDemo() {
+      // 1. Dừng timer
+      if (simTimer) {
+        clearInterval(simTimer);
+        simTimer = null;
+      }
+
+      // 2. Phục hồi trạng thái nút Play
+      const btnPlay = document.getElementById('btnDemoPlay');
+      if (btnPlay) {
+        btnPlay.classList.remove('running', 'paused');
+        btnPlay.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span id="demoPlayText">Chạy Demo</span>
+        `;
+      }
+
+      // 3. Đặt lại chỉ số di chuyển
+      simSegIdx = 0;
+      simT = 0.0;
+
+      // 4. Đặt lại hành khách về 0
+      countIn = 0;
+      countOut = 0;
+      countTotal = 0;
+      updatePassengerUI(0, 0, 0, capacity);
+
+      // 5. Đưa xe bus về trạm đầu tiên của tuyến (hoặc vị trí mặc định)
+      if (route.points && route.points.length >= 1) {
+        const startPos = route.points[0];
+        busMarker.setLatLng(startPos);
+        map.panTo(startPos);
+      } else {
+        busMarker.setLatLng([defaultLat, defaultLon]);
+        map.panTo([defaultLat, defaultLon]);
+      }
+
+      // 6. Xoá sạch vệt di chuyển giả lập
+      trailLayer.clearLayers();
+      trailSeg = null;
+      trailSegState = null;
+      lastTrailPt = null;
+      savedTrail = [];
+      try { localStorage.removeItem(TRAIL_STORAGE_KEY); } catch (e) {}
+
+      // 7. Reset trạng thái lộ trình
+      resetRouteState();
+
+      addLog(`⏹ Đã huỷ chế độ mô phỏng và đặt lại hệ thống về ban đầu.`, 'gps');
+    }
+
+    // Khởi tạo đồ thị và định vị ban đầu
     renderRoute();
     setRouteUI(null);
     drawDonutGauge(0, 30);
+    setTimeout(() => locateUser(false), 800); // Thử ghim Red Pin vị trí của bạn ngay khi mở trang
     
   </script>
 </body>
