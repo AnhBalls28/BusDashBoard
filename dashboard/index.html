@@ -2012,18 +2012,14 @@
         document.getElementById('satInfo').innerText = `${sats} Sats / ${hdop} HDOP`;
         document.getElementById('liveSats').innerText = sats;
 
-        const hasPos = p.fix !== false && p.lat != null && p.lon != null;
+        const hasPos = p.fix === true && p.lat != null && p.lon != null && p.lat !== 0 && p.lon !== 0;
         let state = hasPos ? 'fix' : ((p.chars != null && p.chars < 10) ? 'nodata' : 'searching');
 
         if (state !== lastFixState) {
           if (state === 'fix') {
-            if (p.mode === 'hybrid_assisted') {
-              addLog(`📡 Kích hoạt định vị Hybrid 2D (${sats} vệ tinh dưới tán cây)`, 'gps');
-            } else {
-              addLog(`✅ GPS đã có toạ độ vệ tinh 3D (${sats} vệ tinh)`, 'gps');
-            }
+            addLog(`✅ GPS đã khoá toạ độ vệ tinh 3D (${sats} vệ tinh, HDOP ${hdop})`, 'gps');
           }
-          if (state === 'searching') addLog(`🔍 GPS đang tìm kiếm vệ tinh...`, 'gps');
+          if (state === 'searching') addLog(`🔍 Mất khoá vệ tinh / Đang tìm vệ tinh...`, 'gps');
           if (state === 'nodata') addLog(`⚠️ ESP32 chưa nhận được NMEA từ GPS NEO-6M`, 'alert');
           lastFixState = state;
         }
@@ -2040,17 +2036,24 @@
           return;
         }
 
-        // Đã có toạ độ thật từ ESP32
+        // Bộ lọc chống nhảy toạ độ dội sóng (Multipath Outlier Rejection):
+        // Nếu toạ độ nhảy > 75 mét trong 2 giây (tốc độ > 135 km/h khi đi bộ/xe bus thông thường)
+        // Đây là hiện tượng dội sóng tường bê tông khi bước vào cầu thang, lập tức loại bỏ!
+        if (lastRealGpsPos) {
+          const jumpDist = map.distance(lastRealGpsPos, [p.lat, p.lon]);
+          if (jumpDist > 75) {
+            console.warn(`[GPS Filter] Loại bỏ toạ độ dội sóng: nhảy ${jumpDist.toFixed(0)}m!`);
+            addLog(`⚠️ Bỏ qua toạ độ dội sóng bất thường (nhảy ${jumpDist.toFixed(0)}m)`, 'gps');
+            return;
+          }
+        }
+
+        // Đã qua kiểm định: toạ độ vệ tinh thực 100%
         hasRealGpsFix = true;
         lastRealGpsPos = [p.lat, p.lon];
         lastRealGpsPayload = p;
-        if (p.mode === 'hybrid_assisted') {
-          fixBadge.innerText = 'Định vị Hybrid';
-          fixBadge.className = 'badge-pill badge-purple';
-        } else {
-          fixBadge.innerText = 'Đã định vị 3D';
-          fixBadge.className = 'badge-pill badge-green';
-        }
+        fixBadge.innerText = 'Đã định vị 3D';
+        fixBadge.className = 'badge-pill badge-green';
         document.getElementById('liveSpeed').innerText = (p.speed ?? 0).toFixed(1);
 
         // Nếu người dùng đang chạy Demo mô phỏng thì không ngắt quãng xe demo

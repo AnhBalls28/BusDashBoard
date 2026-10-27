@@ -48,9 +48,6 @@ const int GPS_TX_PIN = 17;            // nối với chân RX của NEO-6M
 const uint32_t GPS_BAUD = 9600;       // NEO-6M mặc định 9600
 const uint32_t PUBLISH_INTERVAL_MS = 2000;   // gửi mỗi 2 giây
 
-// Toạ độ mốc hỗ trợ định vị thông minh khi dưới tán cây / ban công (10°52'45.8"N 106°48'26.6"E)
-const double BASE_LAT = 10.879389;
-const double BASE_LON = 106.807389;
 // ╔══════════════════════════════════════════════════════════════╗
 // ║                     KẾT THÚC CẤU HÌNH                      ║
 // ╚══════════════════════════════════════════════════════════════╝
@@ -105,39 +102,45 @@ void connectMQTT() {
 
 void publishGPS() {
   char payload[360];
-  bool rawFix = gps.location.isValid() && gps.location.age() < 5000;
   int sats = gps.satellites.isValid() ? gps.satellites.value() : 0;
   float hdop = gps.hdop.isValid() ? gps.hdop.hdop() : 99.9;
 
-  // Thuật toán Smart Hybrid: 
-  // 1. Khi có >= 4 vệ tinh (rawFix == true): 100% sử dụng toạ độ vệ tinh thật từ u-blox.
-  // 2. Khi bị tán cây/mái che khuất có >= 3 vệ tinh (hdop < 20.0):
-  //    Kích hoạt chế độ Hybrid 2D Fix dựa trên toạ độ mốc khu vực để hệ thống chạy thông suốt!
-  bool fix = rawFix || (sats >= 3 && hdop < 20.0);
-  double lat = rawFix ? gps.location.lat() : BASE_LAT;
-  double lon = rawFix ? gps.location.lng() : BASE_LON;
-  float speed = gps.speed.isValid() ? gps.speed.kmph() : 0.0;
-  float heading = gps.course.isValid() ? gps.course.deg() : 0.0;
-  float alt = gps.altitude.isValid() ? gps.altitude.meters() : 18.0;
+  // Thuật toán chuẩn viễn thông GNSS – 100% toạ độ vệ tinh u-blox thật:
+  // CHỈ chấp nhận FIX khi có dữ liệu vệ tinh thật đạt chuẩn chính xác:
+  // 1. Toạ độ hợp lệ (isValid) và thời gian tươi mới (age < 2500ms)
+  // 2. Tối thiểu 4 vệ tinh (yêu cầu hình học để giải hệ 4 phương trình 3D không gian)
+  // 3. HDOP < 4.5 (loại bỏ hoàn toàn sóng dội tường multipath khi vào chân toà nhà / cầu thang)
+  // 4. Toạ độ khác 0.0
+  bool fix = gps.location.isValid() &&
+             gps.location.age() < 2500 &&
+             sats >= 4 &&
+             hdop < 4.5 &&
+             gps.location.lat() != 0.0 &&
+             gps.location.lng() != 0.0;
 
   if (fix) {
+    double lat = gps.location.lat();
+    double lon = gps.location.lng();
+    float speed = gps.speed.isValid() ? gps.speed.kmph() : 0.0;
+    float heading = gps.course.isValid() ? gps.course.deg() : 0.0;
+    float alt = gps.altitude.isValid() ? gps.altitude.meters() : 0.0;
+
     char timeStr[24] = "";
     if (gps.date.isValid() && gps.time.isValid()) {
       snprintf(timeStr, sizeof(timeStr), "%04d-%02d-%02dT%02d:%02d:%02dZ",
                gps.date.year(), gps.date.month(), gps.date.day(),
                gps.time.hour(), gps.time.minute(), gps.time.second());
     } else {
-      snprintf(timeStr, sizeof(timeStr), "hybrid_lock");
+      snprintf(timeStr, sizeof(timeStr), "real_satellite");
     }
     snprintf(payload, sizeof(payload),
              "{\"bus_id\":\"bus01\",\"source\":\"esp32\",\"fix\":true,"
              "\"lat\":%.6f,\"lon\":%.6f,\"speed\":%.1f,\"heading\":%.1f,"
              "\"alt\":%.1f,\"sats\":%d,\"hdop\":%.1f,\"gps_time\":\"%s\","
-             "\"mode\":\"%s\"}",
-             lat, lon, speed, heading, alt, sats, hdop, timeStr,
-             rawFix ? "3d_satellite" : "hybrid_assisted");
+             "\"mode\":\"3d_satellite\"}",
+             lat, lon, speed, heading, alt, sats, hdop, timeStr);
   } else {
-    // Chưa có toạ độ: vẫn gửi để Dashboard biết thiết bị đang chạy và tìm vệ tinh
+    // Khi mất sóng / dưới 4 vệ tinh / vào nhà: dứt khoát fix: false, TUYỆT ĐỐI KHÔNG GỬI TOẠ ĐỘ
     snprintf(payload, sizeof(payload),
              "{\"bus_id\":\"bus01\",\"source\":\"esp32\",\"fix\":false,"
              "\"sats\":%d,\"hdop\":%.1f,\"chars\":%lu}",
