@@ -734,6 +734,69 @@
       animation: blink 0.8s infinite alternate;
     }
 
+    /* Google Maps Style Location Follow Button */
+    .btn-map-follow {
+      background: rgba(14, 17, 26, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 6px 13px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: var(--transition);
+      user-select: none;
+    }
+
+    .btn-map-follow:hover {
+      border-color: rgba(255, 255, 255, 0.22);
+      color: var(--text-main);
+      transform: translateY(-1px);
+    }
+
+    .btn-map-follow.active {
+      background: rgba(6, 182, 212, 0.16);
+      border-color: var(--accent-cyan);
+      color: #67e8f9;
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.35);
+    }
+
+    .follow-crosshair-icon {
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+
+    .btn-map-follow.active .follow-crosshair-icon {
+      color: #22d3ee;
+      transform: rotate(90deg);
+    }
+
+    .follow-pulse-indicator {
+      display: none;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #06b6d4;
+      box-shadow: 0 0 8px #06b6d4;
+    }
+
+    .btn-map-follow.active .follow-pulse-indicator {
+      display: inline-block;
+      animation: followRadarPulse 1.4s infinite ease-out;
+    }
+
+    @keyframes followRadarPulse {
+      0% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7); }
+      70% { transform: scale(1.1); opacity: 0.8; box-shadow: 0 0 0 6px rgba(6, 182, 212, 0); }
+      100% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+    }
+
     /* Floating Route Controls (Upper Left over Map) */
     .map-route-controls {
       position: absolute;
@@ -1375,8 +1438,20 @@
 
         <!-- Right: Executive Leaflet Map Container -->
         <div class="map-panel-card">
-          <!-- Floating Telemetry Pills -->
+          <!-- Floating Telemetry Pills & Follow Mode -->
           <div class="map-floating-overlay">
+            <button class="btn-map-follow active" id="btnFollowLocation" title="Bấm để tự động bám theo vị trí xe bus (Google Maps Style)">
+              <svg class="follow-crosshair-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="7"></circle>
+                <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
+                <line x1="12" y1="1" x2="12" y2="5"></line>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="1" y1="12" x2="5" y2="12"></line>
+                <line x1="19" y1="12" x2="23" y2="12"></line>
+              </svg>
+              <span id="followBtnText">Đang bám theo</span>
+              <span class="follow-pulse-indicator"></span>
+            </button>
             <div class="map-pill-widget">
               <div class="map-pill-label">Vệ Tinh</div>
               <div class="map-pill-value" id="liveSats">--</div>
@@ -1584,6 +1659,32 @@
     let isDemoRunning = false;
     let lastFixState = null;
     let lastGpsAt = 0;
+
+    // --- Tính năng Follow vị trí xe bus (Google Maps Style) ---
+    let isFollowMode = true; // Mặc định tự động bám theo vị trí
+    let currentBusPos = null;
+
+    function setFollowMode(enable, silent = false) {
+      isFollowMode = !!enable;
+      const btn = document.getElementById('btnFollowLocation');
+      const text = document.getElementById('followBtnText');
+      if (!btn) return;
+
+      if (isFollowMode) {
+        btn.classList.add('active');
+        if (text) text.innerText = 'Đang bám theo';
+        btn.title = 'Đang bám theo xe (Bấm để thả tự do bản đồ)';
+        if (!silent) addLog(`🧭 Đã bật chế độ Bám theo vị trí xe (Google Maps Follow Mode)`, 'gps');
+        if (currentBusPos) {
+          map.setView(currentBusPos, Math.max(map.getZoom(), 17), { animate: true, duration: 0.6 });
+        }
+      } else {
+        btn.classList.remove('active');
+        if (text) text.innerText = 'Bám theo';
+        btn.title = 'Bấm để tự động bám theo vị trí xe bus';
+        if (!silent) addLog(`👆 Đã dừng bám theo (Bạn có thể tự do kéo xem bản đồ)`, 'gps');
+      }
+    }
 
     function addTrailPointVisual(pos, off) {
       const st = off ? 'off' : 'on';
@@ -1793,6 +1894,28 @@
       saveRoute(); resetRouteState(); renderRoute();
     };
 
+    // Sự kiện nút Bám theo vị trí xe (Follow Mode Google Maps)
+    const btnFollow = document.getElementById('btnFollowLocation');
+    if (btnFollow) {
+      btnFollow.onclick = () => {
+        if (!isFollowMode) {
+          if (!currentBusPos && !map.hasLayer(busMarker)) {
+            addLog(`ℹ️ Xe bus chưa có vị trí (Đang chờ GPS fix hoặc bạn có thể bấm "Chạy Demo")`, 'gps');
+          }
+          setFollowMode(true);
+        } else {
+          setFollowMode(false);
+        }
+      };
+    }
+
+    // Khi người dùng chạm hoặc kéo bản đồ (User drag map), tự động tắt follow giống như Google Maps
+    map.on('dragstart', () => {
+      if (isFollowMode) {
+        setFollowMode(false);
+      }
+    });
+
     // --- 3. Đồ Thị Canvas (Donut & Radar Chart) ---
     function drawDonutGauge(seated, totalCap) {
       const canvas = document.getElementById('gaugeCanvas');
@@ -1875,17 +1998,23 @@
       }
 
       const pos = [p.lat, p.lon];
+      currentBusPos = pos;
       busMarker.setLatLng(pos);
       if (!map.hasLayer(busMarker)) {
         busMarker.addTo(map);
       }
 
-      if (!p.isSimulated && !hasFirstFix) {
+      if (isFollowMode) {
+        // Tự động pan theo xe bus mượt mà chuẩn Google Maps
+        if (!hasFirstFix) {
+          map.setView(pos, 18, { animate: true });
+        } else {
+          map.panTo(pos, { animate: true, duration: 0.8 });
+        }
+      } else if (!hasFirstFix) {
         if (route.points.length < 2) map.setView(pos, 18);
-        hasFirstFix = true;
-      } else if (!p.isSimulated && !map.getBounds().pad(-0.2).contains(pos)) {
-        map.panTo(pos);
       }
+      hasFirstFix = true;
 
       const off = evaluateRoute(p.lat, p.lon, p.hdop);
       if (!lastTrailPt || map.distance(lastTrailPt, pos) > 2) {
@@ -2351,8 +2480,12 @@
       // 6. XỬ LÝ GHIM XE BUS:
       if (hasRealGpsFix && lastRealGpsPos) {
         // Đã có toạ độ thật: đưa ghim trở về đúng toạ độ thực của ESP32
+        currentBusPos = lastRealGpsPos;
         busMarker.setLatLng(lastRealGpsPos);
         if (!map.hasLayer(busMarker)) busMarker.addTo(map);
+        if (isFollowMode) {
+          map.panTo(lastRealGpsPos, { animate: true });
+        }
         if (lastRealGpsPayload) {
           document.getElementById('liveSpeed').innerText = (lastRealGpsPayload.speed ?? 0).toFixed(1);
           document.getElementById('liveSats').innerText = lastRealGpsPayload.sats ?? '--';
@@ -2363,6 +2496,7 @@
         }
       } else {
         // CHƯA CÓ TOẠ ĐỘ GPS THẬT -> GỠ BỎ HOÀN TOÀN GHIM RA KHỎI BẢN ĐỒ!
+        currentBusPos = null;
         if (map.hasLayer(busMarker)) map.removeLayer(busMarker);
         setRouteUI(null);
         document.getElementById('liveSpeed').innerText = '0.0';
