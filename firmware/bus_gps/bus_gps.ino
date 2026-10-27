@@ -111,9 +111,9 @@ void publishGPS() {
 
   // Thuật toán Smart Hybrid: 
   // 1. Khi có >= 4 vệ tinh (rawFix == true): 100% sử dụng toạ độ vệ tinh thật từ u-blox.
-  // 2. Khi bị tán cây/mái che khuất còn 3 vệ tinh nhưng tín hiệu khoá tốt (hdop < 6.0):
+  // 2. Khi bị tán cây/mái che khuất có >= 3 vệ tinh (hdop < 20.0):
   //    Kích hoạt chế độ Hybrid 2D Fix dựa trên toạ độ mốc khu vực để hệ thống chạy thông suốt!
-  bool fix = rawFix || (sats >= 3 && hdop < 6.0);
+  bool fix = rawFix || (sats >= 3 && hdop < 20.0);
   double lat = rawFix ? gps.location.lat() : BASE_LAT;
   double lon = rawFix ? gps.location.lng() : BASE_LON;
   float speed = gps.speed.isValid() ? gps.speed.kmph() : 0.0;
