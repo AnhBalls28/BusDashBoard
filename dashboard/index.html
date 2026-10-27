@@ -1584,9 +1584,46 @@
     let userLocationMarker = null;
     let watchLocationId = null;
 
+    function setOrUpdateRedPin(lat, lon, label, zoomTo = true) {
+      if (!userLocationMarker) {
+        userLocationMarker = L.marker([lat, lon], {
+          icon: redPinIcon,
+          zIndexOffset: 900,
+          draggable: true
+        }).addTo(map);
+
+        userLocationMarker.on('dragend', function (e) {
+          const pt = e.target.getLatLng();
+          userLocationMarker.setPopupContent(`<b>📍 Vị trí bạn đã kéo</b><br>Toạ độ: ${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}`).openPopup();
+          addLog(`📍 Bạn đã kéo Red Pin đến: ${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)}`, 'gps');
+        });
+      } else {
+        userLocationMarker.setLatLng([lat, lon]);
+      }
+      userLocationMarker.bindPopup(`<b>${label}</b><br>Toạ độ: ${lat.toFixed(6)}, ${lon.toFixed(6)}<br><small style="color:#94a3b8;">(Mẹo: Bạn có thể kéo thả ghim đỏ này đến vị trí bất kỳ!)</small>`);
+      if (zoomTo) map.setView([lat, lon], 16);
+    }
+
+    async function fallbackIpLocation(zoomTo = true) {
+      try {
+        const res = await fetch('https://ipwho.is/');
+        const data = await res.json();
+        if (data && data.latitude && data.longitude) {
+          setOrUpdateRedPin(data.latitude, data.longitude, `📍 Vị trí mạng IP (${data.city || 'TP.HCM'})`, zoomTo);
+          addLog(`📍 Trình duyệt/Windows chặn GPS. Đã định vị Red Pin qua IP mạng (${data.city || 'TP.HCM'}). Bạn có thể kéo ghim đến chỗ bạn đứng!`, 'gps');
+          return;
+        }
+      } catch (e) {
+        console.warn('Fallback IP error:', e);
+      }
+      const center = map.getCenter();
+      setOrUpdateRedPin(center.lat, center.lng, '📍 Vị trí của bạn (Kéo thả)', zoomTo);
+      addLog(`📍 Đã ghim Red Pin ngay giữa bản đồ. Bạn có thể kéo thả ghim đến vị trí mong muốn!`, 'gps');
+    }
+
     function locateUser(zoomTo = true) {
       if (!('geolocation' in navigator)) {
-        addLog('Trình duyệt không hỗ trợ Geolocation để tìm vị trí.', 'alert');
+        fallbackIpLocation(zoomTo);
         return;
       }
       navigator.geolocation.getCurrentPosition(
@@ -1594,32 +1631,21 @@
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
           const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-
-          if (!userLocationMarker) {
-            userLocationMarker = L.marker([lat, lon], { icon: redPinIcon, zIndexOffset: 900 }).addTo(map);
-            userLocationMarker.bindPopup(`<b>📍 Vị trí hiện tại của bạn</b><br>Toạ độ: ${lat.toFixed(6)}, ${lon.toFixed(6)}${acc ? '<br>Độ chính xác: ~' + acc + 'm' : ''}`);
-          } else {
-            userLocationMarker.setLatLng([lat, lon]);
-          }
-
-          if (zoomTo) {
-            map.setView([lat, lon], 16);
-          }
-          addLog(`📍 Đã ghim Red Pin vị trí của bạn: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, 'gps');
+          setOrUpdateRedPin(lat, lon, `📍 Vị trí GPS của bạn${acc ? ' (~' + acc + 'm)' : ''}`, zoomTo);
+          addLog(`📍 Đã ghim Red Pin GPS của bạn: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, 'gps');
 
           if (watchLocationId === null) {
             watchLocationId = navigator.geolocation.watchPosition((p) => {
-              const uLat = p.coords.latitude;
-              const uLon = p.coords.longitude;
-              if (userLocationMarker) userLocationMarker.setLatLng([uLat, uLon]);
-            }, null, { enableHighAccuracy: true });
+              if (userLocationMarker) userLocationMarker.setLatLng([p.coords.latitude, p.coords.longitude]);
+            }, null, { enableHighAccuracy: false });
           }
         },
-        (err) => {
-          console.warn('Lỗi Geolocation:', err.message);
-          addLog(`📍 Hãy bật Cho Phép Vị Trí (Location) trên trình duyệt để ghim Red Pin nơi bạn đang đứng.`, 'gps');
+        async (err) => {
+          console.warn('Lỗi Geolocation:', err);
+          // Fallback tự động khi Vivaldi / Windows chặn quyền thiết bị
+          await fallbackIpLocation(zoomTo);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
       );
     }
 
