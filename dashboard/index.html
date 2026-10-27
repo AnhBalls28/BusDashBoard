@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BusMon – Trung Tâm Giám Sát Xe Bus Thời Gian Thực</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- MQTT.js library (WebSocket client) -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-yellow: #eab308;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    header {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 28px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+    }
+
+    .brand-title h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title h1 span.tag {
+      font-size: 0.7rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .brand-title p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-red);
+      box-shadow: 0 0 8px var(--accent-red);
+      transition: background-color 0.3s;
+    }
+
+    .status-dot.connected {
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+    }
+
+    /* Main Container Grid */
+    main {
+      flex: 1;
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Left Sidebar: Passengers & Bus Info */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Passenger Main Hero Card */
+    .passenger-hero {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .occupancy-display {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .occupancy-num {
+      font-size: 3.6rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      font-family: 'JetBrains Mono', monospace;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    }
+
+    .occupancy-cap {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .occupancy-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .occupancy-badge.warning {
+      background: rgba(234, 179, 8, 0.15);
+      color: var(--accent-yellow);
+      border-color: rgba(234, 179, 8, 0.3);
+    }
+
+    .occupancy-badge.overload {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--accent-red);
+      border-color: rgba(239, 68, 68, 0.4);
+      animation: blink 1s infinite alternate;
+    }
+
+    @keyframes blink {
+      from { opacity: 0.7; }
+      to { opacity: 1; box-shadow: 0 0 16px rgba(239, 68, 68, 0.6); }
+    }
+
+    /* Capacity Progress Bar */
+    .progress-bar-container {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #22c55e);
+      border-radius: 999px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s;
+    }
+
+    /* In / Out Stats Grid */
+    .in-out-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+
+    .stat-box.in {
+      border-left: 4px solid var(--accent-green);
+    }
+
+    .stat-box.out {
+      border-left: 4px solid #f97316;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-val {
+      font-size: 1.8rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-val.in-val { color: var(--accent-green); }
+    .stat-val.out-val { color: #f97316; }
+
+    /* Bus Trip Info Card */
+    .trip-info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+    }
+
+    .trip-info-item:last-child {
+      border-bottom: none;
+    }
+
+    .trip-info-label {
+      color: var(--text-muted);
+    }
+
+    .trip-info-val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Right Column: Map + Live Log */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Map Card */
+    .map-card {
+      flex: 1;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 480px;
+      background: #111;
+      border-radius: 16px;
+    }
+
+    /* Telemetry strip over map */
+    .map-telemetry-overlay {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 500;
+      display: flex;
+      gap: 10px;
+    }
+
+    .pill-card {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 14px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .pill-card .pill-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .pill-card .pill-val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Live Event Logs Ticker */
+    .log-card {
+      max-height: 180px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .log-container {
+      flex: 1;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 8px;
+    }
+
+    .log-row {
+      display: flex;
+      gap: 10px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid #64748b;
+    }
+
+    .log-row.in-event { border-left-color: var(--accent-green); }
+    .log-row.out-event { border-left-color: #f97316; }
+    .log-row.gps-event { border-left-color: var(--accent-blue); }
+    .log-row.alert-event { border-left-color: var(--accent-red); background: rgba(239, 68, 68, 0.1); }
+
+    .log-time { color: #64748b; }
+    .log-msg { color: var(--text-main); }
+
+    /* Custom Leaflet Dark Marker */
+    .bus-marker-icon {
+      background: #0284c7;
+      color: white;
+      border: 2px solid white;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.9);
+      transition: transform 0.3s ease-out;
+    }
+
+    /* Quick Test Control Button */
+    .btn-demo {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--accent-blue);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .btn-demo:hover {
+      background: rgba(56, 189, 248, 0.3);
+    }
+
+    /* Bus marker khi lệch tuyến */
+    .bus-marker-icon.off {
+      background: var(--accent-red);
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.95);
+      animation: blink 0.8s infinite alternate;
+    }
+
+    /* Bảng điều khiển tuyến demo (góc trên bên trái bản đồ) */
+    .route-panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 600;
+      width: 250px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      font-size: 0.8rem;
+    }
+
+    .route-panel-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .route-hint {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .route-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .route-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 5px 9px;
+      border-radius: 7px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .route-btn:hover { background: rgba(255, 255, 255, 0.12); }
+    .route-btn.primary { border-color: rgba(34, 197, 94, 0.5); color: var(--accent-green); }
+    .route-btn.primary.active { background: rgba(34, 197, 94, 0.2); }
+    .route-btn.danger { border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }
+
+    .route-opt {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      margin-bottom: 6px;
+    }
+
+    .route-opt input[type="number"] {
+      width: 56px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .pill-card.on-route .pill-val { color: var(--accent-green); }
+    .pill-card.off-route { border-color: rgba(239, 68, 68, 0.6); animation: blink 0.8s infinite alternate; }
+    .pill-card.off-route .pill-val { color: var(--accent-red); }
+
+    /* Banner cảnh báo lệch tuyến */
+    .offroute-banner {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 600;
+      background: rgba(239, 68, 68, 0.92);
+      color: #fff;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      padding: 10px 22px;
+      border-radius: 999px;
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.7);
+      display: none;
+      animation: blink 0.8s infinite alternate;
+    }
+
+    .offroute-banner.show { display: block; }
+
+    /* BusMap Timetable Styles */
+    .timetable-card {
+      max-height: 380px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .timetable-header {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .timetable-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .route-badge-pill {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: white;
+      font-weight: 800;
+      font-size: 0.8rem;
+      padding: 3px 9px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .direction-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 999px;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .direction-badge:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent-blue);
+    }
+    .direction-badge.outbound {
+      color: var(--accent-green);
+      border-color: rgba(34, 197, 94, 0.4);
+      background: rgba(34, 197, 94, 0.1);
+    }
+    .direction-badge.inbound {
+      color: var(--accent-blue);
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .trip-tag {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* BusMap Tab Switcher */
+    .busmap-tabs {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .busmap-tab-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .busmap-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .busmap-tab-btn.active {
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .stop-timeline {
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+      padding: 6px 6px 6px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .stop-timeline::before {
+      content: '';
+      position: absolute;
+      top: 10px;
+      bottom: 14px;
+      left: 10px;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .stop-item {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .stop-dot {
+      position: absolute;
+      left: -19px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #475569;
+      border: 2px solid var(--bg-dark);
+      transition: background 0.3s;
+    }
+
+    .stop-item.passed .stop-dot {
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+
+    .stop-item.current .stop-dot {
+      background: var(--accent-yellow);
+      box-shadow: 0 0 10px var(--accent-yellow);
+      animation: pulse 1s infinite alternate;
+    }
+
+    .stop-name {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .stop-item.current .stop-name {
+      color: var(--accent-yellow);
+      font-weight: 700;
+    }
+
+    .stop-item.passed .stop-name {
+      color: var(--text-muted);
+    }
+
+    .stop-status-tag {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .stop-item.current .stop-status-tag {
+      color: var(--accent-yellow);
+      background: rgba(234, 179, 8, 0.15);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+    }
+
+    .stop-item.passed .stop-status-tag {
+      color: var(--accent-green);
+    }
+
+    /* BusMap Timetable Grid View */
+    .timetable-grid-view {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 4px;
+    }
+
+    .timetable-meta-bar {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.02);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+    }
+
+    .timetable-hour-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 2px 0;
+    }
+
+    .timetable-hour-label {
+      width: 32px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .timetable-chips-wrap {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .trip-chip {
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 3px 7px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .trip-chip:hover {
+      border-color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .trip-chip.past {
+      color: #64748b;
+      background: rgba(255, 255, 255, 0.015);
+      border-color: transparent;
+    }
+
+    .trip-chip.active {
+      color: #fff;
+      font-weight: 700;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      animation: pulse 1.5s infinite alternate;
+    }
+
+    .trip-chip.next {
+      color: var(--accent-yellow);
+      border-color: rgba(234, 179, 8, 0.4);
+      background: rgba(234, 179, 8, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🚌</div>
+      <div class="brand-title">
+        <h1>BusMon Dashboard <span class="tag">REAL-TIME</span></h1>
+        <p>Hệ thống giám sát xe bus thông minh – Nhóm Bread (Đồ Án 2)</p>
+      </div>
+    </div>
+
+    <div class="header-status">
+      <button class="btn-demo" onclick="triggerSimulatedEvent()">⚡ Demo Thử Nghiệm</button>
+      <div class="status-badge">
+        <div class="status-dot" id="mqttDot"></div>
+        <span id="mqttStatusText">Đang kết nối MQTT...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Left Column -->
+    <div class="left-col">
+      <!-- Passenger Occupancy Card -->
+      <div class="card passenger-hero">
+        <div class="card-title">
+          <span>👥 Hành Khách Trên Xe</span>
+          <span class="occupancy-badge" id="occupancyBadge">BÌNH THƯỜNG</span>
+        </div>
+
+        <div class="occupancy-display">
+          <div>
+            <span class="occupancy-num" id="currentCount">0</span>
+            <span class="occupancy-cap">/ <span id="maxCapacity">30</span> chỗ</span>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Tỉ lệ lấp đầy</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: var(--accent-blue);" id="occupancyPercent">0%</div>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="occupancyBar"></div>
+        </div>
+
+        <!-- IN / OUT stats -->
+        <div class="in-out-grid">
+          <div class="stat-box in">
+            <div class="stat-label">📥 Đã Lên Xe (IN)</div>
+            <div class="stat-val in-val" id="totalIn">0</div>
+          </div>
+          <div class="stat-box out">
+            <div class="stat-label">📤 Đã Xuống Xe (OUT)</div>
+            <div class="stat-val out-val" id="totalOut">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GPS Device Card (dữ liệu thật từ ESP32 + NEO-6M) -->
+      <div class="card">
+        <div class="card-title">🛰️ Thiết Bị GPS (ESP32 + NEO-6M)</div>
+        <div class="trip-info-item">
+          <span class="trip-info-label">Thiết bị:</span>
+          <span class="trip-info-val" id="deviceStatus" style="color: var(--text-muted);">Chưa thấy ESP32</span>
+        </div>
+        <div class="trip-info-item">
+          <span class="trip-info-label">Tín hiệu GPS:</span>
+          <span class="trip-info-val" id="fixStatus" style="color: var(--text-muted);">Đang chờ dữ liệu...</span>
+        </div>
+        <div class="trip-info-item">
+          <span class="trip-info-label">Vệ tinh / HDOP:</span>
+          <span class="trip-info-val" id="satInfo">-- / --</span>
+        </div>
+        <div class="trip-info-item">
+          <span class="trip-info-label">Toạ độ:</span>
+          <span class="trip-info-val" id="coordInfo" style="font-family: 'JetBrains Mono', monospace;">--</span>
+        </div>
+        <div class="trip-info-item">
+          <span class="trip-info-label">Cập nhật lúc:</span>
+          <span class="trip-info-val" id="lastUpdate">--</span>
+        </div>
+        <div class="trip-info-item">
+          <span class="trip-info-label">Trạng thái tuyến:</span>
+          <span class="trip-info-val" id="routeInfo" style="color: var(--text-muted);">Chưa vẽ tuyến demo</span>
+        </div>
+        <div class="trip-info-item">
+          <span class="trip-info-label">Tài xế (Buồn ngủ):</span>
+          <span class="trip-info-val" id="driverStatus" style="color: var(--accent-green);">Tỉnh táo</span>
+        </div>
+      </div>
+
+      <!-- BusMap Timetable Card -->
+      <div class="card timetable-card">
+        <div class="card-title">
+          <span>🚏 Lộ Trình & Biểu Đồ Giờ (BusMap)</span>
+          <span style="font-size: 0.74rem; color: var(--accent-blue); font-weight: 700;" id="tripCounterText">Chuyến #01 (Đang chạy)</span>
+        </div>
+
+        <div class="timetable-header">
+          <div class="timetable-top-row">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="route-badge-pill" id="tbRouteBadge">Tuyến 08</span>
+              <span style="font-size: 0.85rem; font-weight: 700;" id="tbRouteTitle">Ký Túc Xá ĐHQG</span>
+            </div>
+            <button class="direction-badge outbound" id="btnToggleDirection" onclick="toggleDirection()" title="Bấm để đổi Chiều Đi / Chiều Về">
+              🟢 Lượt Đi (Xuất bến)
+            </button>
+          </div>
+          <div class="trip-tag" id="tbTripInfo">⏱️ 05:30 - 21:00 • Giãn cách: 15p • 63 chuyến/ngày</div>
+        </div>
+
+        <!-- BusMap Tab Switcher -->
+        <div class="busmap-tabs">
+          <button class="busmap-tab-btn active" id="tabBtnStops" onclick="switchBusMapTab('stops')">
+            🚏 Lộ Trình Trạm (<span id="stopCountBadge">0</span>)
+          </button>
+          <button class="busmap-tab-btn" id="tabBtnTimetable" onclick="switchBusMapTab('timetable')">
+            ⏰ Biểu Đồ Giờ Xuất Bến
+          </button>
+        </div>
+
+        <!-- Tab 1: Stop Timeline -->
+        <div class="stop-timeline" id="stopTimelineBox">
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 12px 0;">
+            Chưa có trạm dừng. Hãy vẽ tuyến demo trên bản đồ để tạo biểu đồ trạm!
+          </div>
+        </div>
+
+        <!-- Tab 2: BusMap Timetable Grid View -->
+        <div class="timetable-grid-view" id="timetableGridView" style="display: none;">
+          <div class="timetable-meta-bar">
+            <span>📅 Lịch chạy hôm nay</span>
+            <span id="timetableActiveTripLabel" style="color: var(--accent-blue); font-weight: 600;">Chuyến #01 (05:30)</span>
+          </div>
+          <div id="timetableRowsWrap" style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Generated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Event Terminal Logs -->
+      <div class="card log-card">
+        <div class="card-title">
+          <span>📜 Nhật Ký Sự Kiện Realtime</span>
+          <span style="font-size: 0.7rem; color: #64748b;" id="logCount">0 sự kiện</span>
+        </div>
+        <div class="log-container" id="logBox">
+          <div class="log-row">
+            <span class="log-time">00:00:00</span>
+            <span class="log-msg">Hệ thống giám sát BusMon khởi tạo thành công.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Map -->
+    <div class="right-col">
+      <div class="card map-card">
+        <!-- Floating Telemetry Pills -->
+        <div class="map-telemetry-overlay">
+          <div class="pill-card">
+            <div class="pill-label">Tốc Độ</div>
+            <div class="pill-val"><span id="liveSpeed">0.0</span> <small style="font-size:0.65rem;">km/h</small></div>
+          </div>
+          <div class="pill-card">
+            <div class="pill-label">Vệ Tinh</div>
+            <div class="pill-val"><span id="liveSats">--</span></div>
+          </div>
+          <div class="pill-card" id="routePill">
+            <div class="pill-label" id="routePillLabel">Tuyến</div>
+            <div class="pill-val"><span id="routePillVal">--</span></div>
+          </div>
+        </div>
+
+        <!-- Bảng vẽ tuyến demo -->
+        <div class="route-panel" id="routePanel">
+          <div class="route-panel-title">🗺️ Tuyến Demo & BusMap</div>
+          <div class="route-hint" id="routeHint">Chưa có tuyến.</div>
+
+          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+            <div style="width: 75px;">
+              <label style="font-size: 0.68rem; color: var(--text-muted); display: block;">Mã tuyến:</label>
+              <input type="text" id="inpRouteBadge" value="Tuyến 08" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff; border-radius: 5px; padding: 3px 6px; font-size: 0.75rem; font-weight: 700;">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 0.68rem; color: var(--text-muted); display: block;">Tên tuyến:</label>
+              <input type="text" id="inpRouteName" value="Ký Túc Xá ĐHQG" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff; border-radius: 5px; padding: 3px 6px; font-size: 0.75rem;">
+            </div>
+          </div>
+
+          <div class="route-btns">
+            <button class="route-btn primary" id="btnDraw">✏️ Vẽ tuyến</button>
+            <button class="route-btn" id="btnUndo">↩️ Bỏ điểm cuối</button>
+            <button class="route-btn danger" id="btnClear">🗑️ Xoá tuyến</button>
+            <button class="route-btn" id="btnClearTrail">🧹 Xoá vệt đi</button>
+          </div>
+          <label class="route-opt"><input type="checkbox" id="chkClosed"> Tuyến khép kín (đi vòng)</label>
+          <label class="route-opt">Ngưỡng lệch tuyến: <input type="number" id="inpThreshold" min="5" max="200" step="5"> m</label>
+        </div>
+
+        <div class="offroute-banner" id="offrouteBanner">⚠️ LỆCH TUYẾN</div>
+
+        <!-- Leaflet Map Container -->
+        <div id="map"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ╔══════════════════════════════════════════════════════════════╗
+    // ║               CẤU HÌNH KẾT NỐI MQTT (WEBSOCKET)             ║
+    // ╚══════════════════════════════════════════════════════════════╝
+    // Kết nối đến EMQX Public Broker qua giao thức Secure WebSocket (WSS)
+    // Không cần đăng ký tài khoản, chạy trực tiếp trên mọi trình duyệt!
+    const MQTT_WS_URL = 'wss://broker.emqx.io:8084/mqtt';
+    const TOPIC_PASSENGERS = 'busmon_bread/bus01/passengers';
+    const TOPIC_GPS = 'busmon_bread/bus01/gps';
+    const TOPIC_ALERT = 'busmon_bread/bus01/alert';
+    const TOPIC_STATUS = 'busmon_bread/bus01/status';  // "online" / "offline" (Last Will của ESP32)
+    const TOPIC_DRIVER = 'busmon_bread/bus01/driver';  // trạng thái buồn ngủ từ detect_drowsiness.py
+
+    let countIn = 0;
+    let countOut = 0;
+    let countTotal = 0;
+    let capacity = 30;
+
+    // --- 1. Khởi tạo Bản đồ Leaflet (TP.HCM) ---
+    const defaultLat = 10.7725;
+    const defaultLon = 106.6576; // ĐH Bách Khoa TP.HCM
+    const map = L.map('map', { zoomControl: false, maxZoom: 19 }).setView([defaultLat, defaultLon], 14);
+
+    // Bản đồ nền Esri – miễn phí, KHÔNG cần API key
+    const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+    const darkLayer = L.layerGroup([
+      L.tileLayer(ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
+        maxNativeZoom: 16, maxZoom: 19
+      }),
+      L.tileLayer(ESRI + 'Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+        maxNativeZoom: 16, maxZoom: 19, pane: 'shadowPane'
+      })
+    ]).addTo(map);
+    // Ảnh vệ tinh – thấy rõ lối đi bộ quanh ký túc xá để vẽ tuyến
+    const satLayer = L.tileLayer(ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
+      maxNativeZoom: 18, maxZoom: 19
+    });
+    L.control.layers({ '🌙 Bản đồ tối': darkLayer, '🛰️ Ảnh vệ tinh': satLayer }, null,
+                     { position: 'bottomright' }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Custom Icon Xe Bus
+    const busIcon = L.divIcon({
+      className: 'custom-bus-icon-container',
+      html: '<div class="bus-marker-icon" id="busMarkerDiv">🚌</div>',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+
+    // Marker chỉ hiện khi có toạ độ thật (không đặt vị trí giả)
+    const busMarker = L.marker([defaultLat, defaultLon], { icon: busIcon, zIndexOffset: 1000 });
+    busMarker.bindPopup("<b>Xe Bus 01</b><br>ESP32 + NEO-6M");
+
+    // Vệt đường đi thật: xanh = đúng tuyến, đỏ = lệch tuyến (tự động lưu vào localStorage)
+    const TRAIL_STORAGE_KEY = 'busmon_saved_trail_v1';
+    const trailLayer = L.layerGroup().addTo(map);
+    let trailSeg = null, trailSegState = null, lastTrailPt = null;
+    let savedTrail = [];
+    let hasFirstFix = false;
+    let lastFixState = null;
+    let lastGpsAt = 0;
+
+    function addTrailPointVisual(pos, off) {
+      const st = off ? 'off' : 'on';
+      if (!trailSeg || st !== trailSegState) {
+        const start = lastTrailPt ? [lastTrailPt, pos] : [pos];
+        trailSeg = L.polyline(start, {
+          color: off ? '#ef4444' : '#38bdf8', weight: 4, opacity: 0.95
+        }).addTo(trailLayer);
+        trailSegState = st;
+      } else {
+        trailSeg.addLatLng(pos);
+      }
+      lastTrailPt = pos;
+    }
+
+    function addTrailPoint(pos, off) {
+      addTrailPointVisual(pos, off);
+      // Lưu vào bộ nhớ trình duyệt để không bị mất khi F5 hoặc gập màn hình
+      savedTrail.push({ lat: pos[0], lon: pos[1], off: off });
+      if (savedTrail.length > 3000) savedTrail.shift();
+      if (savedTrail.length % 3 === 0) {
+        try { localStorage.setItem(TRAIL_STORAGE_KEY, JSON.stringify(savedTrail)); } catch (e) {}
+      }
+    }
+
+    // Khôi phục vệt đã đi trước đó (nếu có)
+    try {
+      const oldTrail = JSON.parse(localStorage.getItem(TRAIL_STORAGE_KEY));
+      if (Array.isArray(oldTrail) && oldTrail.length) {
+        savedTrail = oldTrail;
+        savedTrail.forEach(pt => addTrailPointVisual([pt.lat, pt.lon], pt.off));
+      }
+    } catch (e) {}
+
+    // ╔══════════════════════════════════════════════════════════════╗
+    // ║   TUYẾN DEMO + PHÁT HIỆN LỆCH TUYẾN (lưu trong trình duyệt)   ║
+    // ╚══════════════════════════════════════════════════════════════╝
+    const ROUTE_KEY = 'busmon_demo_route_v1';
+    let route = {
+      points: [],
+      closed: true,
+      threshold: 25,
+      badge: 'Tuyến 08',
+      name: 'Ký Túc Xá ĐHQG',
+      direction: 'outbound'
+    };
+    try {
+      const saved = JSON.parse(localStorage.getItem(ROUTE_KEY));
+      if (saved && Array.isArray(saved.points)) route = { ...route, ...saved };
+    } catch (e) { /* bỏ qua dữ liệu lỗi */ }
+
+    const routeLayer = L.layerGroup().addTo(map);
+    let drawing = false;
+    let routeState = 'unknown';      // 'unknown' | 'on' | 'off'
+    let offCount = 0, onCount = 0;
+    const CONFIRM_POINTS = 2;        // cần 2 điểm liên tiếp (~4 giây) mới đổi trạng thái
+    const MAX_HDOP = 5;              // bỏ qua điểm GPS kém chính xác
+
+    function saveRoute() {
+      localStorage.setItem(ROUTE_KEY, JSON.stringify(route));
+    }
+
+    function routeSegments() {
+      const p = route.points;
+      const segs = [];
+      for (let i = 1; i < p.length; i++) segs.push([p[i - 1], p[i]]);
+      if (route.closed && p.length >= 3) segs.push([p[p.length - 1], p[0]]);
+      return segs;
+    }
+
+    // Khoảng cách (mét) từ 1 điểm tới tuyến = khoảng cách nhỏ nhất tới các đoạn thẳng
+    function distToRouteMeters(lat, lon) {
+      const segs = routeSegments();
+      if (!segs.length) return null;
+      const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+      let best = Infinity;
+      for (const [a, b] of segs) {
+        const ax = (a[1] - lon) * kx, ay = (a[0] - lat) * ky;
+        const bx = (b[1] - lon) * kx, by = (b[0] - lat) * ky;
+        const dx = bx - ax, dy = by - ay;
+        const len2 = dx * dx + dy * dy;
+        let t = len2 ? -(ax * dx + ay * dy) / len2 : 0;
+        t = Math.max(0, Math.min(1, t));
+        best = Math.min(best, Math.hypot(ax + t * dx, ay + t * dy));
+      }
+      return best;
+    }
+
+    // Vẽ tuyến + "hành lang" cho phép (độ rộng = 2 × ngưỡng, đổi theo mức zoom)
+    function renderRoute() {
+      routeLayer.clearLayers();
+      const p = route.points;
+      if (p.length) {
+        const line = route.closed && p.length >= 3 ? [...p, p[0]] : p;
+        const mPerPx = 40075016.686 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2, map.getZoom() + 8);
+        const corridorPx = Math.max(6, (2 * route.threshold) / mPerPx);
+        L.polyline(line, { color: '#22c55e', weight: corridorPx, opacity: 0.13, interactive: false }).addTo(routeLayer);
+        L.polyline(line, {
+          color: '#22c55e', weight: 4, opacity: 0.9,
+          dashArray: drawing ? '8, 8' : null, interactive: false
+        }).addTo(routeLayer);
+        p.forEach((pt, i) => {
+          L.circleMarker(pt, {
+            radius: i === 0 ? 6 : 4, color: '#fff', weight: 2,
+            fillColor: i === 0 ? '#a855f7' : '#22c55e', fillOpacity: 1, interactive: false
+          }).addTo(routeLayer);
+        });
+      }
+      updateRouteHint();
+      buildBusMapTimeline();
+    }
+
+    // --- BusMap Timetable & Stop Tracking Logic ---
+    let currentTripNumber = 1;
+    let lastNearestStopIndex = 0;
+    let completedStopsCount = 0;
+
+    function buildBusMapTimeline() {
+      const box = document.getElementById('stopTimelineBox');
+      const badgeEl = document.getElementById('tbRouteBadge');
+      const titleEl = document.getElementById('tbRouteTitle');
+      const countEl = document.getElementById('stopCountBadge');
+      const pts = route.points;
+
+      if (badgeEl) badgeEl.innerText = route.badge || 'Tuyến 08';
+      if (titleEl) titleEl.innerText = route.name || 'Ký Túc Xá ĐHQG';
+      if (countEl) countEl.innerText = pts ? pts.length : 0;
+
+      updateDirectionUI();
+
+      if (!pts || pts.length < 2) {
+        box.innerHTML = `<div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 12px 0;">
+          Chưa có trạm dừng. Hãy vẽ tuyến demo trên bản đồ để tạo biểu đồ trạm!
+        </div>`;
+        return;
+      }
+
+      const isOutbound = route.direction !== 'inbound';
+      let html = '';
+      pts.forEach((pt, idx) => {
+        const isStart = idx === 0;
+        const isEnd = idx === pts.length - 1;
+        let stopLabel = `Trạm ${idx + 1}`;
+        if (isOutbound) {
+          if (isStart) stopLabel = '🚏 Bến xuất phát (Cổng KTX)';
+          else if (isEnd && route.closed) stopLabel = '🏁 Bến cuối (Vòng về Cổng KTX)';
+          else if (isEnd) stopLabel = `🏁 Bến đích (Trạm ${idx + 1})`;
+        } else {
+          if (isStart) stopLabel = '🚏 Bến xuất phát (Trạm Đích)';
+          else if (isEnd && route.closed) stopLabel = '🏁 Bến cuối (Vòng về Trạm Đích)';
+          else if (isEnd) stopLabel = `🏁 Bến đích (Cổng KTX)`;
+        }
+
+        const etaEstimate = idx === 0 ? 'Xuất phát' : `+${idx * 3} phút`;
+
+        html += `
+          <div class="stop-item" id="stopItem_${idx}">
+            <div class="stop-dot"></div>
+            <div class="stop-name">${stopLabel}</div>
+            <div class="stop-status-tag" id="stopTag_${idx}">${etaEstimate}</div>
+          </div>
+        `;
+      });
+      box.innerHTML = html;
+      updateStopProgress(lastNearestStopIndex);
+      buildBusMapTimetableGrid();
+    }
+
+    function updateStopProgress(nearestIdx) {
+      const pts = route.points;
+      if (!pts || !pts.length) return;
+
+      pts.forEach((_, idx) => {
+        const el = document.getElementById(`stopItem_${idx}`);
+        const tag = document.getElementById(`stopTag_${idx}`);
+        if (!el || !tag) return;
+
+        el.classList.remove('passed', 'current');
+        if (idx < nearestIdx) {
+          el.classList.add('passed');
+          tag.innerText = 'ĐÃ QUA ✓';
+        } else if (idx === nearestIdx) {
+          el.classList.add('current');
+          tag.innerText = 'XE ĐANG ĐẾN 🚌';
+        } else {
+          tag.innerText = `+${(idx - nearestIdx) * 3} phút`;
+        }
+      });
+    }
+
+    // Tạo lưới biểu đồ giờ chạy xuất bến chuẩn phong cách BusMap
+    function buildBusMapTimetableGrid() {
+      const wrap = document.getElementById('timetableRowsWrap');
+      if (!wrap) return;
+
+      const startMin = 5 * 60 + 30; // 05:30
+      const endMin = 21 * 60;       // 21:00
+      const interval = 15;          // 15 phút giãn cách
+
+      let tripNum = 1;
+      const hourlyGroups = {};
+
+      for (let m = startMin; m <= endMin; m += interval) {
+        const h = Math.floor(m / 60);
+        const mins = m % 60;
+        const timeStr = `${String(h).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        const hKey = `${String(h).padStart(2, '0')}h`;
+
+        if (!hourlyGroups[hKey]) hourlyGroups[hKey] = [];
+
+        let status = 'upcoming';
+        if (tripNum < currentTripNumber) {
+          status = 'past';
+        } else if (tripNum === currentTripNumber) {
+          status = 'active';
+        } else if (tripNum === currentTripNumber + 1) {
+          status = 'next';
+        }
+
+        hourlyGroups[hKey].push({
+          num: tripNum,
+          time: timeStr,
+          status: status
+        });
+        tripNum++;
+      }
+
+      let html = '';
+      for (const [hour, trips] of Object.entries(hourlyGroups)) {
+        html += `<div class="timetable-hour-row">
+          <div class="timetable-hour-label">${hour}</div>
+          <div class="timetable-chips-wrap">`;
+        trips.forEach(t => {
+          let chipClass = `trip-chip ${t.status}`;
+          let icon = t.status === 'past' ? '✓' : (t.status === 'active' ? '🚌' : '');
+          let titleAttr = `Chuyến #${t.num} (${t.time}) - ${t.status === 'past' ? 'Đã chạy qua' : (t.status === 'active' ? 'Đang chạy' : 'Chưa xuất bến')}`;
+          html += `<button class="${chipClass}" title="${titleAttr}" onclick="selectTrip(${t.num}, '${t.time}')">
+            ${t.time} ${icon}
+          </button>`;
+        });
+        html += `</div></div>`;
+      }
+      wrap.innerHTML = html;
+
+      const activeLabel = document.getElementById('timetableActiveTripLabel');
+      if (activeLabel) {
+        activeLabel.innerText = `Chuyến #${String(currentTripNumber).padStart(2, '0')} (Đang chạy)`;
+      }
+    }
+
+    function selectTrip(num, time) {
+      currentTripNumber = num;
+      document.getElementById('tripCounterText').innerText = `Chuyến #${String(num).padStart(2, '0')} (${time})`;
+      addLog(`🚏 Đã chọn theo dõi Chuyến #${num} (Giờ xuất bến: ${time})`, 'gps');
+      buildBusMapTimetableGrid();
+      updateStopProgress(lastNearestStopIndex);
+    }
+
+    function switchBusMapTab(tab) {
+      const tabStops = document.getElementById('tabBtnStops');
+      const tabTimetable = document.getElementById('tabBtnTimetable');
+      const boxStops = document.getElementById('stopTimelineBox');
+      const boxTimetable = document.getElementById('timetableGridView');
+
+      if (tab === 'stops') {
+        tabStops.classList.add('active');
+        tabTimetable.classList.remove('active');
+        boxStops.style.display = 'flex';
+        boxTimetable.style.display = 'none';
+      } else {
+        tabTimetable.classList.add('active');
+        tabStops.classList.remove('active');
+        boxTimetable.style.display = 'flex';
+        boxStops.style.display = 'none';
+        buildBusMapTimetableGrid();
+      }
+    }
+
+    function toggleDirection() {
+      route.direction = (route.direction === 'inbound') ? 'outbound' : 'inbound';
+      saveRoute();
+      updateDirectionUI();
+      buildBusMapTimeline();
+      addLog(`🔄 Đổi hướng chạy: ${route.direction === 'outbound' ? 'Lượt Đi (Xuất bến)' : 'Lượt Về (Về bến)'}`, 'info');
+    }
+
+    function updateDirectionUI() {
+      const btn = document.getElementById('btnToggleDirection');
+      if (!btn) return;
+      const isOutbound = route.direction !== 'inbound';
+      btn.className = `direction-badge ${isOutbound ? 'outbound' : 'inbound'}`;
+      btn.innerHTML = isOutbound ? '🟢 Lượt Đi (Xuất bến)' : '🔵 Lượt Về (Về bến)';
+    }
+
+    function updateRouteHint() {
+      const n = route.points.length;
+      let hint;
+      if (drawing) hint = `👆 Click lên bản đồ để thêm điểm (${n} điểm). Chuyển sang "Ảnh vệ tinh" ở góc dưới phải để thấy lối đi. Bấm "Xong" khi hoàn tất.`;
+      else if (n < 2) hint = 'Chưa có tuyến. Zoom tới ký túc xá, bấm "Vẽ tuyến" rồi click các điểm trên đường bạn sẽ đi.';
+      else hint = `✅ Tuyến ${n} điểm, dài ${routeLengthMeters().toFixed(0)} m. Đã lưu trong trình duyệt.`;
+      document.getElementById('routeHint').innerText = hint;
+      const btn = document.getElementById('btnDraw');
+      btn.innerText = drawing ? '✅ Xong' : '✏️ Vẽ tuyến';
+      btn.classList.toggle('active', drawing);
+    }
+
+    function routeLengthMeters() {
+      return routeSegments().reduce((s, [a, b]) => s + map.distance(a, b), 0);
+    }
+
+    function resetRouteState() {
+      routeState = 'unknown';
+      offCount = onCount = 0;
+      setRouteUI(null);
+    }
+
+    function setRouteUI(dist) {
+      const pill = document.getElementById('routePill');
+      const banner = document.getElementById('offrouteBanner');
+      if (pill) pill.classList.remove('on-route', 'off-route');
+      if (banner) banner.classList.remove('show');
+      const markerEl = busMarker.getElement && busMarker.getElement();
+      const icon = markerEl && markerEl.querySelector('.bus-marker-icon');
+      if (icon) icon.classList.toggle('off', routeState === 'off');
+
+      if (dist == null) {
+        setText('routePillLabel', 'Tuyến');
+        setText('routePillVal', route.points.length >= 2 ? '--' : 'chưa vẽ');
+        setText('routeInfo', route.points.length >= 2 ? 'Chờ toạ độ GPS...' : 'Chưa vẽ tuyến demo', 'var(--text-muted)');
+        return;
+      }
+      setText('routePillVal', `${dist.toFixed(0)} m`);
+      if (routeState === 'off') {
+        setText('routePillLabel', 'LỆCH TUYẾN');
+        pill.classList.add('off-route');
+        banner.innerText = `⚠️ LỆCH TUYẾN – cách ${dist.toFixed(0)} m`;
+        banner.classList.add('show');
+        setText('routeInfo', `⚠️ Lệch tuyến (${dist.toFixed(0)} m)`, 'var(--accent-red)');
+      } else if (routeState === 'on') {
+        setText('routePillLabel', 'Đúng tuyến');
+        pill.classList.add('on-route');
+        setText('routeInfo', `✅ Đúng tuyến (cách ${dist.toFixed(0)} m)`, 'var(--accent-green)');
+      } else {
+        setText('routePillLabel', 'Tuyến');
+        setText('routeInfo', `Đang kiểm tra... (${dist.toFixed(0)} m)`, 'var(--text-muted)');
+      }
+    }
+
+    // Trả về true nếu đang lệch tuyến
+    function evaluateRoute(lat, lon, hdop) {
+      const d = distToRouteMeters(lat, lon);
+      if (d == null) { setRouteUI(null); return false; }
+
+      const poorFix = hdop != null && hdop > MAX_HDOP;
+      if (!poorFix) {
+        if (d > route.threshold) { offCount++; onCount = 0; }
+        else if (d <= route.threshold * 0.8) { onCount++; offCount = 0; }   // vùng đệm chống nhấp nháy
+
+        if (routeState !== 'off' && offCount >= CONFIRM_POINTS) {
+          routeState = 'off';
+          addLog(`⚠️ LỆCH TUYẾN: cách tuyến ${d.toFixed(0)} m (ngưỡng ${route.threshold} m)`, 'alert');
+        } else if (routeState !== 'on' && onCount >= CONFIRM_POINTS) {
+          addLog(routeState === 'off' ? `✅ Đã quay lại tuyến (cách ${d.toFixed(0)} m)` : '✅ Đang đi đúng tuyến', 'gps');
+          routeState = 'on';
+        }
+      }
+      setRouteUI(d);
+      return routeState === 'off';
+    }
+
+    // --- Sự kiện vẽ tuyến ---
+    map.on('click', (e) => {
+      if (!drawing) return;
+      route.points.push([+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)]);
+      saveRoute();
+      renderRoute();
+    });
+    map.on('zoomend', renderRoute);
+
+    document.getElementById('btnDraw').onclick = () => {
+      drawing = !drawing;
+      map.getContainer().style.cursor = drawing ? 'crosshair' : '';
+      drawing ? map.doubleClickZoom.disable() : map.doubleClickZoom.enable();
+      if (!drawing) {
+        resetRouteState();
+        if (route.points.length >= 2) addLog(`🗺️ Đã lưu tuyến demo: ${route.points.length} điểm, ${routeLengthMeters().toFixed(0)} m`, 'gps');
+      }
+      renderRoute();
+    };
+    document.getElementById('btnUndo').onclick = () => {
+      route.points.pop(); saveRoute(); resetRouteState(); renderRoute();
+    };
+    document.getElementById('btnClear').onclick = () => {
+      if (route.points.length && !confirm('Xoá toàn bộ tuyến demo?')) return;
+      route.points = []; saveRoute(); resetRouteState(); renderRoute();
+    };
+    document.getElementById('btnClearTrail').onclick = () => {
+      trailLayer.clearLayers(); trailSeg = null; trailSegState = null; lastTrailPt = null;
+      savedTrail = [];
+      try { localStorage.removeItem(TRAIL_STORAGE_KEY); } catch (e) {}
+    };
+    const chkClosed = document.getElementById('chkClosed');
+    chkClosed.checked = route.closed;
+    chkClosed.onchange = () => { route.closed = chkClosed.checked; saveRoute(); resetRouteState(); renderRoute(); };
+    const inpThreshold = document.getElementById('inpThreshold');
+    inpThreshold.value = route.threshold;
+    inpThreshold.onchange = () => {
+      route.threshold = Math.max(5, Math.min(200, +inpThreshold.value || 25));
+      inpThreshold.value = route.threshold;
+      saveRoute(); resetRouteState(); renderRoute();
+    };
+
+    const inpRouteBadge = document.getElementById('inpRouteBadge');
+    if (inpRouteBadge) {
+      inpRouteBadge.value = route.badge || 'Tuyến 08';
+      inpRouteBadge.oninput = () => {
+        route.badge = inpRouteBadge.value.trim() || 'Tuyến 08';
+        saveRoute();
+        buildBusMapTimeline();
+      };
+    }
+    const inpRouteName = document.getElementById('inpRouteName');
+    if (inpRouteName) {
+      inpRouteName.value = route.name || 'Ký Túc Xá ĐHQG';
+      inpRouteName.oninput = () => {
+        route.name = inpRouteName.value.trim() || 'Ký Túc Xá ĐHQG';
+        saveRoute();
+        buildBusMapTimeline();
+      };
+    }
+
+    function setText(id, text, color) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerText = text;
+      if (color) el.style.color = color;
+    }
+
+    function setDeviceStatus(online) {
+      setText('deviceStatus', online ? '🟢 Online' : '🔴 Offline',
+              online ? 'var(--accent-green)' : 'var(--accent-red)');
+    }
+
+    function handleGps(p) {
+      lastGpsAt = Date.now();
+      setDeviceStatus(true);
+      setText('lastUpdate', new Date().toLocaleTimeString('vi-VN'));
+
+      const sats = p.sats ?? '--';
+      const hdop = p.hdop != null && p.hdop < 99 ? p.hdop.toFixed(1) : '--';
+      setText('satInfo', `${sats} / ${hdop}`);
+      setText('liveSats', sats);
+
+      const hasPos = p.fix !== false && p.lat != null && p.lon != null;
+      let state;
+      if (hasPos) state = 'fix';
+      else if (p.chars != null && p.chars < 10) state = 'nodata';
+      else state = 'searching';
+
+      if (state !== lastFixState) {
+        if (state === 'fix') addLog(`✅ GPS đã định vị (${sats} vệ tinh)`, 'gps');
+        if (state === 'searching') addLog(`🔍 GPS đang tìm vệ tinh... (cần nhìn thấy bầu trời)`, 'gps');
+        if (state === 'nodata') addLog(`⚠️ ESP32 không nhận được dữ liệu từ NEO-6M – kiểm tra dây TX→GPIO16`, 'alert');
+        lastFixState = state;
+      }
+
+      if (state === 'nodata') {
+        setText('fixStatus', '⚠️ Không có dữ liệu từ GPS (kiểm tra dây)', 'var(--accent-red)');
+        return;
+      }
+      if (state === 'searching') {
+        setText('fixStatus', '🔍 Đang tìm vệ tinh...', 'var(--accent-yellow)');
+        return;
+      }
+
+      // Đã có toạ độ thật
+      setText('fixStatus', '✅ Đã định vị', 'var(--accent-green)');
+      setText('coordInfo', `${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}`);
+      setText('liveSpeed', (p.speed ?? 0).toFixed(1));
+
+      const pos = [p.lat, p.lon];
+      busMarker.setLatLng(pos);
+      if (!hasFirstFix) {
+        busMarker.addTo(map);
+        if (route.points.length < 2) map.setView(pos, 18);   // có tuyến rồi thì giữ khung nhìn tuyến
+        hasFirstFix = true;
+      } else if (!map.getBounds().pad(-0.2).contains(pos)) {
+        map.panTo(pos);
+      }
+
+      // Kiểm tra lệch tuyến rồi thêm vào vệt đi (bỏ qua nếu đứng yên < 2 m để tránh nhiễu)
+      const off = evaluateRoute(p.lat, p.lon, p.hdop);
+      if (!lastTrailPt || map.distance(lastTrailPt, pos) > 2) addTrailPoint(pos, off);
+
+      // Cập nhật vị trí trạm trên biểu đồ BusMap
+      if (route.points && route.points.length >= 2) {
+        let minDist = Infinity;
+        let nearest = 0;
+        route.points.forEach((pt, idx) => {
+          const d = map.distance(pos, pt);
+          if (d < minDist) { minDist = d; nearest = idx; }
+        });
+
+        if (minDist <= Math.max(route.threshold, 30)) {
+          // Phát hiện hoàn thành 1 vòng (chuyến mới)
+          if (lastNearestStopIndex === route.points.length - 1 && nearest === 0 && completedStopsCount >= route.points.length - 1) {
+            currentTripNumber++;
+            completedStopsCount = 0;
+            document.getElementById('tripCounterText').innerText = `Chuyến #${String(currentTripNumber).padStart(2, '0')} (Đang chạy)`;
+            addLog(`🎉 Hoàn thành chuyến #${currentTripNumber - 1}! Bắt đầu chuyến #${currentTripNumber}`, 'gps');
+          }
+          if (nearest > lastNearestStopIndex) completedStopsCount++;
+          lastNearestStopIndex = nearest;
+          updateStopProgress(nearest);
+        }
+      }
+    }
+
+    // Nếu > 10 giây không nhận được gì từ ESP32 → báo mất tín hiệu
+    setInterval(() => {
+      if (lastGpsAt && Date.now() - lastGpsAt > 10000) {
+        setText('fixStatus', '⏸️ Mất tín hiệu từ thiết bị', 'var(--text-muted)');
+      }
+    }, 2000);
+
+    // Vẽ tuyến đã lưu (nếu có) và zoom tới đó
+    renderRoute();
+    setRouteUI(null);
+    if (route.points.length >= 2) map.fitBounds(L.polyline(route.points).getBounds(), { padding: [60, 60] });
+
+    // --- 2. Xử lý Giao diện (UI Updates) ---
+    function updatePassengerUI(pIn, pOut, pTotal, pCap = 30) {
+      countIn = pIn;
+      countOut = pOut;
+      countTotal = Math.max(0, pTotal);
+      capacity = pCap;
+
+      document.getElementById('totalIn').innerText = countIn;
+      document.getElementById('totalOut').innerText = countOut;
+      document.getElementById('currentCount').innerText = countTotal;
+      document.getElementById('maxCapacity').innerText = capacity;
+
+      const pct = Math.min(100, Math.round((countTotal / capacity) * 100));
+      document.getElementById('occupancyPercent').innerText = `${pct}%`;
+      
+      const bar = document.getElementById('occupancyBar');
+      bar.style.width = `${pct}%`;
+
+      const badge = document.getElementById('occupancyBadge');
+      if (countTotal >= capacity) {
+        badge.innerText = "QUÁ TẢI (OVERLOAD)";
+        badge.className = "occupancy-badge overload";
+        bar.style.background = "linear-gradient(90deg, #f97316, #ef4444)";
+      } else if (countTotal >= capacity * 0.8) {
+        badge.innerText = "SẮP ĐẦY XE";
+        badge.className = "occupancy-badge warning";
+        bar.style.background = "linear-gradient(90deg, #38bdf8, #eab308)";
+      } else {
+        badge.innerText = "BÌNH THƯỜNG";
+        badge.className = "occupancy-badge";
+        bar.style.background = "linear-gradient(90deg, #38bdf8, #22c55e)";
+      }
+    }
+
+    function addLog(message, type = 'info') {
+      const logBox = document.getElementById('logBox');
+      const now = new Date().toTimeString().split(' ')[0];
+      const row = document.createElement('div');
+      row.className = `log-row ${type}-event`;
+      row.innerHTML = `<span class="log-time">${now}</span> <span class="log-msg">${message}</span>`;
+      logBox.insertBefore(row, logBox.firstChild);
+
+      // Giới hạn 40 logs
+      if (logBox.children.length > 40) {
+        logBox.removeChild(logBox.lastChild);
+      }
+      document.getElementById('logCount').innerText = `${logBox.children.length} sự kiện`;
+    }
+
+    // --- 3. Kết nối MQTT WebSocket ---
+    const clientId = 'busmon_web_' + Math.random().toString(16).substr(2, 8);
+    const client = mqtt.connect(MQTT_WS_URL, {
+      clientId: clientId,
+      clean: true,
+      connectTimeout: 4000,
+      reconnectPeriod: 2000,
+    });
+
+    const mqttDot = document.getElementById('mqttDot');
+    const mqttStatusText = document.getElementById('mqttStatusText');
+
+    client.on('connect', () => {
+      mqttDot.className = 'status-dot connected';
+      mqttStatusText.innerText = 'Đã kết nối Cloud Broker';
+      addLog(`Đã kết nối máy chủ MQTT Cloud (${MQTT_WS_URL})`, 'info');
+
+      // Đăng ký nhận tin nhắn từ các topic của xe bus
+      client.subscribe([TOPIC_PASSENGERS, TOPIC_GPS, TOPIC_ALERT, TOPIC_STATUS, TOPIC_DRIVER], (err) => {
+        if (!err) {
+          addLog(`Đã lắng nghe: ${TOPIC_PASSENGERS}, ${TOPIC_GPS} & ${TOPIC_DRIVER}`, 'info');
+        }
+      });
+    });
+
+    client.on('reconnect', () => {
+      mqttStatusText.innerText = 'Đang thử kết nối lại...';
+    });
+
+    client.on('offline', () => {
+      mqttDot.className = 'status-dot';
+      mqttStatusText.innerText = 'Mất kết nối MQTT';
+    });
+
+    // Nhận dữ liệu thật từ Camera AI và ESP32 GPS
+    client.on('message', (topic, message) => {
+      const text = message.toString();
+
+      // Topic trạng thái là chuỗi thường ("online"/"offline"), không phải JSON
+      if (topic === TOPIC_STATUS) {
+        const online = text === 'online';
+        setDeviceStatus(online);
+        addLog(online ? '🟢 ESP32 đã kết nối' : '🔴 ESP32 mất kết nối', online ? 'gps' : 'alert');
+        return;
+      }
+      if (!text) return;
+
+      try {
+        const payload = JSON.parse(text);
+
+        if (topic === TOPIC_PASSENGERS) {
+          updatePassengerUI(payload.in, payload.out, payload.count, payload.capacity || 30);
+          addLog(`Hành khách cập nhật ➔ IN: ${payload.in} | OUT: ${payload.out} | Trên xe: ${payload.count} (${payload.level})`, 'in');
+        }
+        else if (topic === TOPIC_GPS) {
+          handleGps(payload);
+        }
+        else if (topic === TOPIC_DRIVER) {
+          if (payload.drowsy) {
+            setText('driverStatus', '⚠️ NGUY HIỂM: BUỒN NGỦ!', 'var(--accent-red)');
+          } else {
+            setText('driverStatus', '✅ Tỉnh táo', 'var(--accent-green)');
+          }
+        }
+        else if (topic === TOPIC_ALERT) {
+          addLog(`⚠️ CẢNH BÁO: ${payload.msg || 'Phát hiện sự cố!'}`, 'alert');
+        }
+      } catch (e) {
+        console.error("Lỗi parse JSON:", e);
+      }
+    });
+
+    // Nút Demo nhanh (cho phép bấm thử để xem hiệu ứng nếu chưa chạy camera)
+    function triggerSimulatedEvent() {
+      const fakeIn = countIn + 1;
+      const fakeTotal = fakeIn - countOut;
+      updatePassengerUI(fakeIn, countOut, fakeTotal, 30);
+      addLog(`[DEMO] Hành khách mới bước lên xe ➜ Tổng: ${fakeTotal}`, 'in');
+    }
+  </script>
+</body>
+</html>
