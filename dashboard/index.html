@@ -1322,28 +1322,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Radar Card: Driver Vigilance & Biometrics -->
-          <div class="chart-panel-card">
-            <div class="card-meta-header">
-              <span class="card-meta-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                Chỉ Số An Toàn Tài Xế
-              </span>
-              <div class="card-actions-row">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-              </div>
-            </div>
-
-            <div class="radar-canvas-container">
-              <canvas id="radarCanvas" width="300" height="160"></canvas>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">
-              <span>Phản xạ: <strong style="color: var(--accent-cyan);">98ms</strong></span>
-              <span>Ngủ gật (EAR &lt; 0.22): <strong id="drowsyAlertCount" style="color: var(--accent-green);">0 lần</strong></span>
-            </div>
-          </div>
         </div>
 
         <!-- Right: Executive Leaflet Map Container -->
@@ -1394,47 +1372,10 @@
         <div class="card-meta-header">
           <span class="card-meta-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-            Ma Trận Trạm & Luồng Sự Kiện Vi Sai
+            Nhật Ký Sự Kiện Realtime
           </span>
           <span style="font-size: 0.74rem; color: var(--text-subtle);" id="logEventCountText">0 sự kiện ghi nhận</span>
         </div>
-
-        <!-- 8-Node Matrix Bubble Row (like reference bottom chart) -->
-        <div class="matrix-bubble-grid">
-          <div class="matrix-node">
-            <div class="node-bubble active-purple">01</div>
-            <span class="node-label">Bách Khoa</span>
-          </div>
-          <div class="matrix-node">
-            <div class="node-bubble active-cyan">02</div>
-            <span class="node-label">Tô Hiến Thành</span>
-          </div>
-          <div class="matrix-node">
-            <div class="node-bubble active-purple">03</div>
-            <span class="node-label">Lý Thường Kiệt</span>
-          </div>
-          <div class="matrix-node">
-            <div class="node-bubble active-coral">04</div>
-            <span class="node-label">3 Tháng 2</span>
-          </div>
-          <div class="matrix-node">
-            <div class="node-bubble">05</div>
-            <span class="node-label">Hồng Bàng</span>
-          </div>
-          <div class="matrix-node">
-            <div class="node-bubble">06</div>
-            <span class="node-label">Chợ Lớn</span>
-          </div>
-          <div class="matrix-node">
-            <div class="node-bubble">07</div>
-            <span class="node-label">Hải Thượng</span>
-          </div>
-          <div class="matrix-node">
-            <div class="node-bubble active-purple">08</div>
-            <span class="node-label">KTX ĐHQG</span>
-          </div>
-        </div>
-
         <!-- Live Event Stream Log Box -->
         <div class="stream-log-box" id="streamLogBox">
           <div class="log-line">
@@ -1831,49 +1772,6 @@
       document.getElementById('availNum').innerText = Math.max(0, totalCap - seated);
     }
 
-    function drawRadarBiometrics(ear) {
-      const canvas = document.getElementById('radarCanvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const w = canvas.width, h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      const cx = w / 2, cy = h / 2 + 5;
-      const maxR = 60;
-      const sides = 6;
-      const labels = ['Chớp mắt', 'Nhìn thẳng', 'Gật đầu', 'Ngáp', 'Tập trung', 'EAR'];
-
-      // Draw web grid
-      for (let r = 1; r <= 3; r++) {
-        ctx.beginPath();
-        for (let i = 0; i < sides; i++) {
-          const angle = (i * 2 * Math.PI / sides) - Math.PI / 2;
-          const x = cx + (maxR * r / 3) * Math.cos(angle);
-          const y = cy + (maxR * r / 3) * Math.sin(angle);
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-        ctx.stroke();
-      }
-
-      // Draw active polygon
-      const factor = isDrowsy ? 0.35 : 0.85;
-      ctx.beginPath();
-      for (let i = 0; i < sides; i++) {
-        const angle = (i * 2 * Math.PI / sides) - Math.PI / 2;
-        const val = (i === 5) ? (ear / 0.35) * maxR : maxR * factor * (0.8 + 0.2 * Math.sin(i * 1.5));
-        const x = cx + val * Math.cos(angle);
-        const y = cy + val * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fillStyle = isDrowsy ? 'rgba(239, 68, 68, 0.3)' : 'rgba(139, 92, 246, 0.35)';
-      ctx.fill();
-      ctx.strokeStyle = isDrowsy ? '#ef4444' : '#8b5cf6';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
 
     // --- 4. Xử Lý Telemetry GPS & Trạng Thái ---
     function handleGps(p) {
@@ -1963,8 +1861,8 @@
         statusEl.style.color = "var(--accent-red)";
         earEl.innerText = `EAR: ${ear.toFixed(2)} (<0.22 Ngủ gật!)`;
         drowsyCounter++;
-        document.getElementById('drowsyAlertCount').innerText = `${drowsyCounter} lần`;
-        document.getElementById('drowsyAlertCount').style.color = "var(--accent-red)";
+        
+        
         addLog(`⚠️ CẢNH BÁO AN TOÀN: Tài xế có dấu hiệu nhắm mắt buồn ngủ!`, 'alert');
         pushAiMessage(`🚨 Khẩn cấp: Hệ thống MediaPipe phát hiện tài xế nhắm mắt quá 25 frames (EAR: ${ear.toFixed(2)}). Đang phát âm báo cabin!`);
       } else {
@@ -1973,7 +1871,7 @@
         earEl.innerText = `EAR: ${ear.toFixed(2)} (>0.22 Chuẩn)`;
       }
 
-      drawRadarBiometrics(ear);
+      
     }
 
     // --- 5. Terminal Logs & AI Copilot Feed ---
@@ -2211,7 +2109,7 @@
     renderRoute();
     setRouteUI(null);
     drawDonutGauge(0, 30);
-    drawRadarBiometrics(0.30);
+    
   </script>
 </body>
 </html>
