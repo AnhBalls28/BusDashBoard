@@ -1177,30 +1177,6 @@
   <div class="app-layout">
     <!-- Left + Center Workspace -->
     <main class="main-workspace">
-      <!-- View Toolbar -->
-      <div class="view-toolbar">
-        <div class="toolbar-left">
-          <button class="pill-tab active">Overview ▾</button>
-          <button class="pill-tab" onclick="addLog('Đã chọn xem chế độ Analytics mở rộng', 'gps')">Analytics</button>
-          <button class="pill-tab" onclick="addLog('Đã mở bộ cấu hình thiết bị ESP32', 'gps')">Hardware</button>
-          <button class="pill-tab" style="padding: 6px 10px;">+</button>
-        </div>
-
-        <div class="toolbar-right">
-          <div class="search-bar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-subtle);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" class="search-input" placeholder="Search metrics, telemetry..." onkeydown="if(event.key==='Enter') addLog(`Tìm kiếm: '${this.value}'`, 'gps')">
-          </div>
-          <button class="btn-action" title="Settings" onclick="addLog('Đã mở bảng điều khiển quản trị', 'gps')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          </button>
-          <button class="btn-action" onclick="addLog('Widgets tùy biến đã sẵn sàng', 'gps')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            <span>Widgets</span>
-          </button>
-        </div>
-      </div>
-
       <!-- ROW 1: 4 TOP KPI CARDS -->
       <div class="kpi-grid">
         <!-- Card 1: Passengers on bus -->
