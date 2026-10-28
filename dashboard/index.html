@@ -2099,10 +2099,10 @@
     }
 
     function updatePassengerUI(pIn, pOut, pTotal, pCap = 30) {
-      countIn = pIn;
-      countOut = pOut;
-      countTotal = Math.max(0, pTotal);
-      capacity = pCap;
+      if (pIn !== undefined && pIn !== null && !isNaN(pIn)) countIn = Number(pIn);
+      if (pOut !== undefined && pOut !== null && !isNaN(pOut)) countOut = Number(pOut);
+      if (pTotal !== undefined && pTotal !== null && !isNaN(pTotal)) countTotal = Math.max(0, Number(pTotal));
+      if (pCap) capacity = Number(pCap);
 
       document.getElementById('totalIn').innerText = countIn;
       document.getElementById('totalOut').innerText = countOut;
@@ -2394,8 +2394,12 @@
       try {
         const payload = JSON.parse(text);
         if (topic === TOPIC_PASSENGERS) {
-          updatePassengerUI(payload.in, payload.out, payload.count, payload.capacity || 30);
-          addLog(`Hành khách: IN +${payload.in} | OUT -${payload.out} | Hiện có: ${payload.count}`, 'in');
+          const pIn = (payload.in !== undefined && payload.in !== null) ? payload.in : (payload.count || countIn || 0);
+          const pOut = (payload.out !== undefined && payload.out !== null) ? payload.out : (countOut || 0);
+          const pTotal = (payload.count !== undefined && payload.count !== null) ? payload.count : Math.max(0, pIn - pOut);
+          updatePassengerUI(pIn, pOut, pTotal, payload.capacity || 30);
+          const srcTag = payload.source === 'cabin_camera' ? 'Khoang khách' : 'Cửa xe';
+          addLog(`Hành khách [${srcTag}]: IN +${pIn} | OUT -${pOut} | Hiện có: ${pTotal}`, "in");
         } else if (topic === TOPIC_GPS) {
           handleGps(payload);
         } else if (topic === TOPIC_DRIVER) {
