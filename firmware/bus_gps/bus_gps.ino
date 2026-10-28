@@ -40,8 +40,8 @@ const char* WIFI_PASS = "hcmut123";         // ← mật khẩu WiFi
 
 const char* MQTT_BROKER  = "broker.emqx.io";
 const int   MQTT_PORT    = 1883;
-const char* TOPIC_GPS    = "busmon_bread/bus01/gps";
-const char* TOPIC_STATUS = "busmon_bread/bus01/status";   // online / offline
+const char* TOPIC_GPS    = "bussystem/bus01/gps";
+const char* TOPIC_STATUS = "bussystem/bus01/status";   // online / offline
 
 const int GPS_RX_PIN = 16;            // nối với chân TX của NEO-6M
 const int GPS_TX_PIN = 17;            // nối với chân RX của NEO-6M
