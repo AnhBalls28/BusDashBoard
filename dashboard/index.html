@@ -85,9 +85,9 @@
       background: #09090b;
     }
 
-    /* Filter for Dark OSM tiles (Monochrome Stealth) */
+    /* Filter for Dark OSM tiles (Monochrome Stealth - 100% Free & Zero Watermark) */
     .leaflet-tile-pane .osm-monochrome-filter {
-      filter: invert(1) hue-rotate(180deg) contrast(1.15) brightness(0.7) grayscale(0.9);
+      filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(105%) grayscale(45%);
     }
 
     /* Glassmorphism Black Surface */
@@ -1259,33 +1259,40 @@
     const defaultLon = 106.807389;
     const map = L.map('map', { zoomControl: false, maxZoom: 19 }).setView([defaultLat, defaultLon], 16);
 
-    // Layer 1: OpenStreetMap Standard Tiles (Official OSM API)
+    // Layer 1: OpenStreetMap Tối (Monochrome Stealth - Dùng API OSM chính thức + Bộ lọc CSS, Không cần API key, Không watermark)
+    const osmDarkLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      className: 'osm-monochrome-filter',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+    });
+
+    // Layer 2: OpenStreetMap Chuẩn (Daylight mode)
     const osmStandardLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
     });
 
-    // Layer 2: OpenStreetMap Dark Stealth (Carto Dark via OSM Data)
-    const osmDarkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      subdomains: 'abcd',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; CARTO'
-    });
-
-    // Layer 3: Esri World Imagery (Satellite)
+    // Layer 3: Ảnh Vệ Tinh (Esri World Imagery)
     const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       attribution: 'Tiles &copy; Esri, Maxar'
     });
 
-    // Set Default Base Layer to OSM Dark Stealth
+    // Layer 4: Bản Đồ Xám Tối (Esri World Dark Gray Canvas)
+    const esriDarkLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16,
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+    });
+
+    // Đặt mặc định là OSM Tối (Monochrome Stealth) - Hoàn toàn không dính watermark
     osmDarkLayer.addTo(map);
 
     // Leaflet Layers Control
     L.control.layers({
-      'OSM Tối (Monochrome)': osmDarkLayer,
+      'OSM Tối (Monochrome Stealth)': osmDarkLayer,
       'OpenStreetMap Chuẩn': osmStandardLayer,
-      'Ảnh Vệ Tinh (Satellite)': satLayer
+      'Ảnh Vệ Tinh (Satellite)': satLayer,
+      'Esri Xám Tối (Dark Gray)': esriDarkLayer
     }, null, { position: 'bottomright' }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
