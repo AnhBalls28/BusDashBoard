@@ -913,6 +913,175 @@
       display: block;
     }
 
+    /* Replay HUD Floating Bar */
+    .has-replay-active .deviation-banner {
+      bottom: 125px !important;
+    }
+
+    .replay-hud-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 550;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 10px 14px;
+      width: calc(100% - 28px);
+      max-width: 540px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .replay-hud-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .replay-hud-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: 0.03em;
+    }
+
+    .replay-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+      animation: pulse 1.2s infinite alternate;
+    }
+
+    .replay-hud-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .btn-replay-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: var(--transition);
+    }
+    .btn-replay-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .replay-slider-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .replay-slider-wrap input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    .replay-time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: #64748b;
+    }
+
+    .replay-ctrl-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .replay-ctrl-left, .replay-ctrl-right {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn-replay-act {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px 9px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-replay-act:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-replay-act.primary {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: rgba(56, 189, 248, 0.6);
+      color: #38bdf8;
+    }
+
+    .btn-replay-act.primary:hover {
+      background: #38bdf8;
+      color: #04101e;
+    }
+
+    .btn-replay-act.danger {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .btn-replay-act.danger:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-replay-speed {
+      padding: 5px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      background: rgba(139, 92, 246, 0.15);
+      color: #c4b5fd;
+      cursor: pointer;
+      min-width: 34px;
+      text-align: center;
+      transition: var(--transition);
+    }
+    .btn-replay-speed:hover {
+      background: rgba(139, 92, 246, 0.3);
+      color: #fff;
+    }
+
     /* Custom Leaflet Marker */
     .bus-marker-dot {
       background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
@@ -1328,7 +1497,7 @@
         <div class="kpi-card">
           <div class="kpi-header">
             <span class="kpi-title">Hành Khách Trên Xe</span>
-            <span class="kpi-icon-btn" title="Capacity Status">
+            <span class="kpi-icon-btn" title="Bấm để đặt lại số hành khách về 0" onclick="resetPassengerTelemetry()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
             </span>
           </div>
@@ -1473,10 +1642,15 @@
             <div class="route-btn-grid">
               <button class="btn-micro primary" id="btnDraw">✏️ Vẽ tuyến</button>
               <button class="btn-micro" id="btnUndo">↩️ Bỏ điểm</button>
-              <button class="btn-micro" id="btnShareRoute" style="color: var(--accent-cyan); font-weight: 600;" title="Sao chép link chia sẻ tuyến sang iPhone">🔗 Chia sẻ</button>
+              <button class="btn-micro" id="btnShareRoute" style="color: var(--accent-cyan); font-weight: 600;" title="Sao chép link chia sẻ tuyến sang máy khác">🔗 Chia sẻ</button>
               <button class="btn-micro danger" id="btnClear">🗑️ Xoá tuyến</button>
+              <button class="btn-micro" id="btnExportData" style="color: #6ee7b7; border-color: rgba(16,185,129,0.45); font-weight: 600;" title="Tải xuống file Log JSON + CSV lộ trình và vệt đi bộ">💾 Lưu Log</button>
+              <button class="btn-micro" id="btnImportData" style="color: #c4b5fd; border-color: rgba(139,92,246,0.45);" title="Mở lại file JSON lộ trình và vệt đi bộ đã lưu">📂 Nạp Log</button>
+              <button class="btn-micro" id="btnReplayTrail" style="grid-column: span 2; color: #38bdf8; border-color: rgba(56,189,248,0.5); font-weight: 600; background: rgba(56,189,248,0.12);" title="Phát lại toàn bộ hành trình GPS trên bản đồ">▶️ Phát lại Vệt GPS (Replay)</button>
+              <button class="btn-micro" id="btnTrailToRoute" style="grid-column: span 2; color: #fdba74; border-color: rgba(251,146,60,0.4);" title="Chuyển vệt đi bộ thực tế hiện tại thành Tuyến chuẩn">👣 Lấy vệt đi làm Tuyến</button>
               <button class="btn-micro" id="btnClearTrail" style="grid-column: span 2;">🧹 Xoá vệt di chuyển</button>
             </div>
+            <input type="file" id="fileImportRouteLog" accept=".json" style="display: none;" />
 
             <div class="route-options-row">
               <label><input type="checkbox" id="chkClosed" checked> Tuyến vòng</label>
@@ -1486,6 +1660,61 @@
 
           <!-- Deviation Alert Banner -->
           <div class="deviation-banner" id="deviationBanner">⚠️ CẢNH BÁO: XE ĐANG CHẠY LỆCH TUYẾN!</div>
+
+          <!-- Floating GPS Replay Bar -->
+          <div class="replay-hud-bar" id="replayHudBar" style="display: none;">
+            <div class="replay-hud-header">
+              <div class="replay-hud-title">
+                <span class="replay-live-dot"></span>
+                <span>PHÁT LẠI HÀNH TRÌNH GPS (REPLAY)</span>
+                <span class="badge-pill badge-purple" id="replayIdxBadge">0 / 0</span>
+              </div>
+              <div class="replay-hud-meta">
+                <span id="replayTelemetryMeta">-- km/h • -- Sats</span>
+                <span id="replayDeviationStatus" class="badge-pill badge-green">Đúng tuyến</span>
+                <button class="btn-replay-close" id="btnReplayClose" title="Đóng chế độ Replay">✕</button>
+              </div>
+            </div>
+
+            <div class="replay-slider-wrap">
+              <input type="range" id="replayScrubber" min="0" max="0" value="0" step="1" title="Kéo để tua nhanh đến điểm bất kỳ trên hành trình" />
+              <div class="replay-time-row">
+                <span id="replayTimeStart">Điểm 1</span>
+                <span id="replayProgressPct" style="font-weight: 600; color: #38bdf8;">0%</span>
+                <span id="replayTimeEnd">Điểm 0</span>
+              </div>
+            </div>
+
+            <div class="replay-ctrl-row">
+              <div class="replay-ctrl-left">
+                <button class="btn-replay-act" id="btnReplayRestart" title="Về điểm xuất phát">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5"></line></svg>
+                </button>
+                <button class="btn-replay-act" id="btnReplayBack5" title="Tua lùi 5 điểm">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+                  <span style="font-size: 0.65rem;">-5</span>
+                </button>
+                <button class="btn-replay-act primary" id="btnReplayPlayPause" title="Phát / Tạm dừng">
+                  <span id="replayPlayPauseIcon">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  </span>
+                  <span id="replayPlayPauseText">Phát</span>
+                </button>
+                <button class="btn-replay-act" id="btnReplayFwd5" title="Tua tới 5 điểm">
+                  <span style="font-size: 0.65rem;">+5</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+                </button>
+              </div>
+
+              <div class="replay-ctrl-right">
+                <button class="btn-replay-speed" id="btnReplaySpeed" title="Thay đổi tốc độ phát lại (1x, 2x, 5x, 10x)">1x</button>
+                <button class="btn-replay-act danger" id="btnReplayStop" title="Dừng và đóng Replay">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16"></rect></svg>
+                  <span>Dừng</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           <!-- Leaflet Map Div -->
           <div id="map"></div>
@@ -1702,10 +1931,18 @@
       lastTrailPt = pos;
     }
 
-    function addTrailPoint(pos, off) {
+    function addTrailPoint(pos, off, meta = {}) {
       addTrailPointVisual(pos, off);
-      savedTrail.push({ lat: +pos[0].toFixed(6), lon: +pos[1].toFixed(6), off: !!off });
-      if (savedTrail.length > 500) savedTrail.shift();
+      savedTrail.push({
+        lat: +pos[0].toFixed(6),
+        lon: +pos[1].toFixed(6),
+        off: !!off,
+        speed: meta.speed != null ? +Number(meta.speed).toFixed(1) : 0,
+        sats: meta.sats != null ? Number(meta.sats) : 0,
+        hdop: meta.hdop != null ? +Number(meta.hdop).toFixed(1) : 1.0,
+        ts: meta.ts || Date.now()
+      });
+      if (savedTrail.length > 10000) savedTrail.shift();
       try { localStorage.setItem(TRAIL_STORAGE_KEY, JSON.stringify(savedTrail)); } catch (e) {}
     }
 
@@ -1902,7 +2139,9 @@
 
     document.getElementById('btnClear').onclick = () => {
       if (route.points.length && !confirm('Xoá toàn bộ tuyến giám sát?')) return;
+      if (isReplayRunning) stopReplay();
       route.points = []; saveRoute(); resetRouteState(); renderRoute();
+      addLog('Đã xoá tuyến giám sát trên bản đồ.', 'gps');
     };
 
     const btnShareRoute = document.getElementById('btnShareRoute');
@@ -1926,11 +2165,472 @@
     }
 
     document.getElementById('btnClearTrail').onclick = () => {
+      if (savedTrail.length && !confirm('Xoá sạch vệt di chuyển hiện tại trên bản đồ?')) return;
+      if (isReplayRunning) stopReplay();
       trailLayer.clearLayers(); trailSeg = null; trailSegState = null; lastTrailPt = null;
       savedTrail = [];
       try { localStorage.removeItem(TRAIL_STORAGE_KEY); } catch (e) {}
       addLog('Đã xoá sạch vệt di chuyển trên bản đồ.', 'gps');
     };
+
+    // --- LƯU LOG (EXPORT JSON + CSV) & NẠP LOG (IMPORT) & CHUYỂN VỆT ĐI BỘ THÀNH TUYẾN ---
+    const btnExportData = document.getElementById('btnExportData');
+    if (btnExportData) {
+      btnExportData.onclick = () => {
+        if ((!route.points || !route.points.length) && (!savedTrail || !savedTrail.length)) {
+          alert('Chưa có dữ liệu Tuyến hoặc Vệt đi bộ nào để lưu!');
+          return;
+        }
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const exportObj = {
+          project: 'BusMon_EdgeAI_IoT',
+          version: '2.0',
+          exported_at: new Date().toISOString(),
+          route_length_m: Math.round(routeLengthMeters()),
+          route: route,
+          trail_count: savedTrail.length,
+          trail: savedTrail
+        };
+        // 1. Tải file JSON đầy đủ (dùng để Nạp lại 100% lên bản đồ bất cứ lúc nào)
+        const jsonBlob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+        const jsonUrl = URL.createObjectURL(jsonBlob);
+        const aJson = document.createElement('a');
+        aJson.href = jsonUrl;
+        aJson.download = `busmon_route_walk_log_${ts}.json`;
+        document.body.appendChild(aJson);
+        aJson.click();
+        document.body.removeChild(aJson);
+        URL.revokeObjectURL(jsonUrl);
+
+        // 2. Nếu có vệt đi bộ thực tế, xuất kèm bảng CSV toạ độ GPS để đưa vào Báo cáo / Excel
+        if (savedTrail.length > 0) {
+          let csv = 'index,latitude,longitude,status,speed_kmh,satellites,timestamp\n';
+          savedTrail.forEach((pt, idx) => {
+            const spd = pt.speed != null ? pt.speed : '';
+            const sats = pt.sats != null ? pt.sats : '';
+            const timeStr = pt.ts ? new Date(pt.ts).toISOString() : '';
+            csv += `${idx + 1},${pt.lat},${pt.lon},${pt.off ? 'OFF_ROUTE' : 'ON_ROUTE'},${spd},${sats},${timeStr}\n`;
+          });
+          const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const csvUrl = URL.createObjectURL(csvBlob);
+          const aCsv = document.createElement('a');
+          aCsv.href = csvUrl;
+          aCsv.download = `busmon_gps_trail_${ts}.csv`;
+          document.body.appendChild(aCsv);
+          aCsv.click();
+          document.body.removeChild(aCsv);
+          URL.revokeObjectURL(csvUrl);
+        }
+        addLog(`💾 Đã xuất file Log lộ trình (${route.points.length} trạm) & vệt đi bộ (${savedTrail.length} điểm GPS)!`, 'gps');
+      };
+    }
+
+    const btnImportData = document.getElementById('btnImportData');
+    const fileImportInput = document.getElementById('fileImportRouteLog');
+    if (btnImportData && fileImportInput) {
+      btnImportData.onclick = () => fileImportInput.click();
+      fileImportInput.onchange = (ev) => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            if (isReplayRunning) stopReplay();
+            const data = JSON.parse(e.target.result);
+            let importedRouteCount = 0;
+            let importedTrailCount = 0;
+
+            if (data.route && Array.isArray(data.route.points)) {
+              route = { ...route, ...data.route };
+              chkClosed.checked = !!route.closed;
+              inpThreshold.value = route.threshold || 25;
+              saveRoute();
+              renderRoute();
+              importedRouteCount = route.points.length;
+            }
+            if (Array.isArray(data.trail)) {
+              trailLayer.clearLayers(); trailSeg = null; trailSegState = null; lastTrailPt = null;
+              savedTrail = data.trail;
+              savedTrail.forEach(pt => addTrailPointVisual([pt.lat, pt.lon], pt.off));
+              try { localStorage.setItem(TRAIL_STORAGE_KEY, JSON.stringify(savedTrail)); } catch (err) {}
+              importedTrailCount = savedTrail.length;
+            }
+            const focusPt = (savedTrail.length ? [savedTrail[0].lat, savedTrail[0].lon] : (route.points.length ? route.points[0] : null));
+            if (focusPt) {
+              setFollowMode(false, true);
+              map.setView(focusPt, 18, { animate: true });
+            }
+            addLog(`📂 Đã nạp lại Log thành công: ${importedRouteCount} điểm tuyến & ${importedTrailCount} điểm vệt GPS! Bấm "▶️ Phát lại Vệt GPS" để xem xe chạy.`, 'gps');
+          } catch (err) {
+            alert('File JSON không hợp lệ: ' + err.message);
+          }
+          fileImportInput.value = '';
+        };
+        reader.readAsText(file);
+      };
+    }
+
+    const btnTrailToRoute = document.getElementById('btnTrailToRoute');
+    if (btnTrailToRoute) {
+      btnTrailToRoute.onclick = () => {
+        if (!savedTrail || savedTrail.length < 2) {
+          alert('Chưa có vệt đi bộ thực tế (cần ít nhất 2 điểm GPS) để chuyển thành Tuyến!');
+          return;
+        }
+        const simplified = [];
+        savedTrail.forEach((pt, i) => {
+          const cur = [pt.lat, pt.lon];
+          if (i === 0 || i === savedTrail.length - 1 || map.distance(simplified[simplified.length - 1], cur) >= 8) {
+            simplified.push(cur);
+          }
+        });
+        route.points = simplified;
+        saveRoute();
+        resetRouteState();
+        renderRoute();
+        addLog(`👣 Đã chuyển vệt đi bộ thực tế thành Tuyến chuẩn (${simplified.length} điểm, dài ${routeLengthMeters().toFixed(0)} m)!`, 'gps');
+      };
+    }
+
+    // =========================================================================
+    // --- 2.1. TÍNH NĂNG PHÁT LẠI HÀNH TRÌNH GPS (GPS TRAIL REPLAY ENGINE) ---
+    // =========================================================================
+    let isReplayRunning = false;
+    let isReplayPaused = false;
+    let replayTimer = null;
+    let replayIdx = 0;
+    let replaySpeed = 1;
+    const REPLAY_SPEEDS = [1, 2, 5, 10];
+    let ghostTrailLayer = null;
+    let replayTrailLayer = null;
+    let replayTrailSeg = null;
+    let replayTrailSegState = null;
+    let replayLastPt = null;
+
+    function startReplay() {
+      if (!savedTrail || savedTrail.length === 0) {
+        alert('Chưa có dữ liệu vệt GPS để phát lại!\n\n💡 Bạn có thể bấm "📂 Nạp Log" để mở file JSON đã lưu trước đó, hoặc kết nối GPS đi lại thực tế để ghi vệt mới.');
+        return;
+      }
+
+      // Dừng demo mô phỏng nếu đang bật
+      if (simTimer || isDemoRunning) {
+        cancelDemo();
+      }
+
+      isReplayRunning = true;
+      isReplayPaused = false;
+      replayIdx = 0;
+
+      // 1. Hiện giao diện điều khiển Replay
+      const hud = document.getElementById('replayHudBar');
+      if (hud) hud.style.display = 'flex';
+      const mapCard = document.querySelector('.map-panel-card');
+      if (mapCard) mapCard.classList.add('has-replay-active');
+
+      // 2. Tạm ẩn vệt tĩnh cũ trên bản đồ
+      if (map.hasLayer(trailLayer)) {
+        map.removeLayer(trailLayer);
+      }
+
+      // 3. Tạo vệt tham chiếu xám mờ toàn tuyến (Ghost track)
+      if (ghostTrailLayer && map.hasLayer(ghostTrailLayer)) map.removeLayer(ghostTrailLayer);
+      const allPts = savedTrail.map(p => [p.lat, p.lon]);
+      ghostTrailLayer = L.polyline(allPts, {
+        color: '#94a3b8',
+        weight: 3,
+        opacity: 0.35,
+        dashArray: '5, 8'
+      }).addTo(map);
+
+      // 4. Khởi tạo layer vệt động vẽ theo xe khi phát lại
+      if (replayTrailLayer && map.hasLayer(replayTrailLayer)) map.removeLayer(replayTrailLayer);
+      replayTrailLayer = L.layerGroup().addTo(map);
+      replayTrailSeg = null;
+      replayTrailSegState = null;
+      replayLastPt = null;
+
+      // 5. Cấu hình Scrubber
+      const scrubber = document.getElementById('replayScrubber');
+      if (scrubber) {
+        scrubber.min = 0;
+        scrubber.max = savedTrail.length - 1;
+        scrubber.value = 0;
+      }
+      const startLbl = document.getElementById('replayTimeStart');
+      const endLbl = document.getElementById('replayTimeEnd');
+      if (startLbl) startLbl.innerText = 'Điểm 1';
+      if (endLbl) endLbl.innerText = `Điểm ${savedTrail.length}`;
+
+      // 6. Zoom bao quát toàn bộ hành trình
+      try {
+        const bounds = L.latLngBounds(allPts);
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+      } catch (e) {}
+
+      // 7. Hiển thị điểm đầu tiên
+      renderReplayPoint(0);
+
+      // 8. Chạy tự động
+      updateReplayPlayPauseBtn(true);
+      scheduleNextReplayStep();
+
+      addLog(`▶️ Bắt đầu phát lại hành trình GPS (${savedTrail.length} điểm ghi nhận)`, 'gps');
+    }
+
+    function addReplayTrailVisual(pos, off) {
+      if (!replayTrailLayer) return;
+      const st = off ? 'off' : 'on';
+      if (!replayTrailSeg || st !== replayTrailSegState) {
+        const start = replayLastPt ? [replayLastPt, pos] : [pos];
+        replayTrailSeg = L.polyline(start, {
+          color: off ? '#ef4444' : '#06b6d4',
+          weight: 4,
+          opacity: 0.95
+        }).addTo(replayTrailLayer);
+        replayTrailSegState = st;
+      } else {
+        replayTrailSeg.addLatLng(pos);
+      }
+      replayLastPt = pos;
+    }
+
+    function renderReplayPoint(idx) {
+      if (!savedTrail || idx < 0 || idx >= savedTrail.length) return;
+      const pt = savedTrail[idx];
+      const pos = [pt.lat, pt.lon];
+
+      // Di chuyển ghim xe bus
+      busMarker.setLatLng(pos);
+      if (!map.hasLayer(busMarker)) busMarker.addTo(map);
+      currentBusPos = pos;
+
+      // Pan mượt nếu đang Follow
+      if (isFollowMode) {
+        map.panTo(pos, { animate: true, duration: 0.35 });
+      }
+
+      // Đánh giá lệch tuyến thực tế tại toạ độ này so với Tuyến hiện hành
+      const off = evaluateRoute(pt.lat, pt.lon, pt.hdop || 1.0);
+
+      // Vẽ vệt di chuyển
+      addReplayTrailVisual(pos, off);
+
+      // Cập nhật thông số HUD & Dashboard
+      const speed = pt.speed != null ? Number(pt.speed) : 22.0;
+      const sats = pt.sats != null ? pt.sats : 8;
+      const hdop = pt.hdop != null ? Number(pt.hdop) : 1.0;
+
+      document.getElementById('liveSpeed').innerText = speed.toFixed(1);
+      document.getElementById('liveSats').innerText = sats;
+      document.getElementById('satInfo').innerText = `${sats} Sats / ${hdop.toFixed(1)} HDOP`;
+
+      const badge = document.getElementById('replayIdxBadge');
+      if (badge) badge.innerText = `${idx + 1} / ${savedTrail.length}`;
+
+      const meta = document.getElementById('replayTelemetryMeta');
+      if (meta) meta.innerText = `${speed.toFixed(1)} km/h • ${sats} Sats`;
+
+      const devStatus = document.getElementById('replayDeviationStatus');
+      if (devStatus) {
+        if (off) {
+          devStatus.innerText = 'LỆCH TUYẾN';
+          devStatus.className = 'badge-pill badge-coral';
+        } else {
+          devStatus.innerText = 'Đúng tuyến';
+          devStatus.className = 'badge-pill badge-green';
+        }
+      }
+
+      const pct = Math.round(((idx + 1) / savedTrail.length) * 100);
+      const pctEl = document.getElementById('replayProgressPct');
+      if (pctEl) pctEl.innerText = `${pct}%`;
+
+      const scrubber = document.getElementById('replayScrubber');
+      if (scrubber) scrubber.value = idx;
+    }
+
+    function scheduleNextReplayStep() {
+      if (replayTimer) clearTimeout(replayTimer);
+      if (!isReplayRunning || isReplayPaused) return;
+
+      const baseDelay = 700;
+      const delay = Math.max(50, Math.round(baseDelay / replaySpeed));
+
+      replayTimer = setTimeout(() => {
+        if (!isReplayRunning || isReplayPaused) return;
+
+        replayIdx++;
+        if (replayIdx >= savedTrail.length) {
+          isReplayPaused = true;
+          updateReplayPlayPauseBtn(false, true);
+          addLog(`🏁 Đã hoàn thành phát lại toàn bộ vệt hành trình (${savedTrail.length} điểm)!`, 'gps');
+          return;
+        }
+
+        renderReplayPoint(replayIdx);
+        scheduleNextReplayStep();
+      }, delay);
+    }
+
+    function seekReplay(newIdx) {
+      if (!savedTrail || savedTrail.length === 0) return;
+      newIdx = Math.max(0, Math.min(savedTrail.length - 1, newIdx));
+      replayIdx = newIdx;
+
+      // Xoá và vẽ lại toàn bộ vệt từ điểm 0 đến newIdx
+      if (replayTrailLayer) replayTrailLayer.clearLayers();
+      replayTrailSeg = null;
+      replayTrailSegState = null;
+      replayLastPt = null;
+
+      for (let i = 0; i <= newIdx; i++) {
+        const pt = savedTrail[i];
+        const off = evaluateRoute(pt.lat, pt.lon, pt.hdop || 1.0);
+        addReplayTrailVisual([pt.lat, pt.lon], off);
+      }
+
+      renderReplayPoint(newIdx);
+
+      if (newIdx >= savedTrail.length - 1) {
+        isReplayPaused = true;
+        updateReplayPlayPauseBtn(false, true);
+      }
+    }
+
+    function toggleReplayPlayPause() {
+      if (!isReplayRunning) {
+        startReplay();
+        return;
+      }
+      if (replayIdx >= savedTrail.length - 1) {
+        seekReplay(0);
+        isReplayPaused = false;
+        updateReplayPlayPauseBtn(true);
+        scheduleNextReplayStep();
+        return;
+      }
+
+      if (isReplayPaused) {
+        isReplayPaused = false;
+        updateReplayPlayPauseBtn(true);
+        scheduleNextReplayStep();
+        addLog(`▶️ Tiếp tục phát lại hành trình...`, 'gps');
+      } else {
+        isReplayPaused = true;
+        if (replayTimer) clearTimeout(replayTimer);
+        updateReplayPlayPauseBtn(false);
+        addLog(`⏸ Tạm dừng phát lại hành trình tại điểm ${replayIdx + 1}/${savedTrail.length}`, 'gps');
+      }
+    }
+
+    function updateReplayPlayPauseBtn(isPlaying, isAtEnd = false) {
+      const text = document.getElementById('replayPlayPauseText');
+      const icon = document.getElementById('replayPlayPauseIcon');
+      if (!text || !icon) return;
+
+      if (isAtEnd) {
+        text.innerText = 'Phát lại';
+        icon.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>`;
+      } else if (isPlaying) {
+        text.innerText = 'Tạm dừng';
+        icon.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+      } else {
+        text.innerText = 'Tiếp tục';
+        icon.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+      }
+    }
+
+    function stepReplayBy(delta) {
+      seekReplay(replayIdx + delta);
+    }
+
+    function cycleReplaySpeed() {
+      const currIdx = REPLAY_SPEEDS.indexOf(replaySpeed);
+      const nextIdx = (currIdx + 1) % REPLAY_SPEEDS.length;
+      replaySpeed = REPLAY_SPEEDS[nextIdx];
+      const btn = document.getElementById('btnReplaySpeed');
+      if (btn) btn.innerText = `${replaySpeed}x`;
+      addLog(`⚡ Tốc độ phát lại: ${replaySpeed}x`, 'gps');
+      if (isReplayRunning && !isReplayPaused) {
+        scheduleNextReplayStep();
+      }
+    }
+
+    function stopReplay() {
+      if (replayTimer) { clearTimeout(replayTimer); replayTimer = null; }
+      isReplayRunning = false;
+      isReplayPaused = false;
+
+      // Ẩn HUD
+      const hud = document.getElementById('replayHudBar');
+      if (hud) hud.style.display = 'none';
+      const mapCard = document.querySelector('.map-panel-card');
+      if (mapCard) mapCard.classList.remove('has-replay-active');
+
+      // Gỡ ghost layer và replay dynamic layer
+      if (ghostTrailLayer && map.hasLayer(ghostTrailLayer)) map.removeLayer(ghostTrailLayer);
+      if (replayTrailLayer && map.hasLayer(replayTrailLayer)) map.removeLayer(replayTrailLayer);
+
+      // Phục hồi lại vệt gốc
+      if (!map.hasLayer(trailLayer)) {
+        trailLayer.addTo(map);
+      }
+
+      // Đưa ghim xe bus về toạ độ thực hoặc điểm cuối
+      if (hasRealGpsFix && lastRealGpsPos) {
+        busMarker.setLatLng(lastRealGpsPos);
+      } else if (savedTrail && savedTrail.length) {
+        busMarker.setLatLng([savedTrail[savedTrail.length - 1].lat, savedTrail[savedTrail.length - 1].lon]);
+      }
+
+      // Tắt cờ cảnh báo
+      const devBanner = document.getElementById('deviationBanner');
+      if (devBanner) devBanner.classList.remove('show');
+
+      addLog(`⏹ Đã đóng chế độ phát lại hành trình.`, 'gps');
+    }
+
+    // Gắn sự kiện các nút điều khiển Replay
+    const btnReplayTrail = document.getElementById('btnReplayTrail');
+    if (btnReplayTrail) {
+      btnReplayTrail.onclick = () => {
+        if (!savedTrail || savedTrail.length === 0) {
+          alert('Chưa có dữ liệu vệt GPS để phát lại!\n\n💡 Bạn có thể bấm "📂 Nạp Log" để mở file JSON lộ trình/vệt GPS đã lưu trước đó, hoặc kết nối GPS ngoài thực tế để ghi vệt mới.');
+          return;
+        }
+        startReplay();
+      };
+    }
+
+    const btnReplayPlayPause = document.getElementById('btnReplayPlayPause');
+    if (btnReplayPlayPause) btnReplayPlayPause.onclick = toggleReplayPlayPause;
+
+    const btnReplayRestart = document.getElementById('btnReplayRestart');
+    if (btnReplayRestart) btnReplayRestart.onclick = () => seekReplay(0);
+
+    const btnReplayBack5 = document.getElementById('btnReplayBack5');
+    if (btnReplayBack5) btnReplayBack5.onclick = () => stepReplayBy(-5);
+
+    const btnReplayFwd5 = document.getElementById('btnReplayFwd5');
+    if (btnReplayFwd5) btnReplayFwd5.onclick = () => stepReplayBy(5);
+
+    const btnReplaySpeed = document.getElementById('btnReplaySpeed');
+    if (btnReplaySpeed) btnReplaySpeed.onclick = cycleReplaySpeed;
+
+    const btnReplayStop = document.getElementById('btnReplayStop');
+    if (btnReplayStop) btnReplayStop.onclick = stopReplay;
+
+    const btnReplayClose = document.getElementById('btnReplayClose');
+    if (btnReplayClose) btnReplayClose.onclick = stopReplay;
+
+    const scrubber = document.getElementById('replayScrubber');
+    if (scrubber) {
+      scrubber.oninput = (e) => {
+        const val = parseInt(e.target.value, 10);
+        seekReplay(val);
+      };
+    }
 
     const chkClosed = document.getElementById('chkClosed');
     chkClosed.checked = route.closed;
@@ -2065,8 +2765,8 @@
         fixBadge.className = 'badge-pill badge-green';
         document.getElementById('liveSpeed').innerText = (p.speed ?? 0).toFixed(1);
 
-        // Nếu người dùng đang chạy Demo mô phỏng thì không ngắt quãng xe demo
-        if (isDemoRunning) return;
+        // Nếu người dùng đang chạy Demo mô phỏng hoặc Replay thì không ngắt quãng
+        if (isDemoRunning || isReplayRunning) return;
       }
 
       const pos = [p.lat, p.lon];
@@ -2093,7 +2793,7 @@
         if (p.isSimulated) {
           addTrailPointVisual(pos, off);
         } else {
-          addTrailPoint(pos, off);
+          addTrailPoint(pos, off, { speed: p.speed, sats: p.sats, hdop: p.hdop, ts: p.timestamp });
         }
       }
     }
@@ -2399,11 +3099,14 @@
           const pTotal = (payload.count !== undefined && payload.count !== null) ? payload.count : Math.max(0, pIn - pOut);
           updatePassengerUI(pIn, pOut, pTotal, payload.capacity || 30);
           const srcTag = payload.source === 'cabin_camera' ? 'Khoang khách' : 'Cửa xe';
-          addLog(`Hành khách [${srcTag}]: IN +${pIn} | OUT -${pOut} | Hiện có: ${pTotal}`, "in");
+          if (payload.reset) { addLog(`🔄 Camera [${srcTag}] đã thoát – Đặt lại số hành khách về mặc định (0)`, "gps"); } else { addLog(`Hành khách [${srcTag}]: IN +${pIn} | OUT -${pOut} | Hiện có: ${pTotal}`, "in"); }
         } else if (topic === TOPIC_GPS) {
           handleGps(payload);
         } else if (topic === TOPIC_DRIVER) {
           updateDriverUI(payload.drowsy, payload.ear || 0.3);
+          if (payload.reset) {
+            addLog(`🔄 Camera Tài xế đã thoát – Đặt lại trạng thái về mặc định (Tỉnh Táo)`, "gps");
+          }
         } else if (topic === TOPIC_ALERT) {
           addLog(`⚠️ CẢNH BÁO: ${payload.msg || 'Sự cố ngoại vi'}`, 'alert');
         }
@@ -2493,6 +3196,7 @@
         addLog(`⏸ Đã tạm dừng xe bus mô phỏng. Bấm "Tiếp Tục" để chạy tiếp.`, 'gps');
       } else {
         // Bắt đầu chạy hoặc tiếp tục chạy
+        if (isReplayRunning) stopReplay();
         isDemoRunning = true;
         stepSimulatedBus();
         simTimer = setInterval(stepSimulatedBus, 1200);
@@ -2541,6 +3245,11 @@
       countOut = 0;
       countTotal = 0;
       updatePassengerUI(0, 0, 0, capacity);
+      updateDriverUI(false, 0.30);
+      if (client && client.connected) {
+        client.publish(TOPIC_PASSENGERS, JSON.stringify({ bus_id: 'bus01', in: 0, out: 0, count: 0, capacity: capacity, level: 'normal', reset: true, ts: Date.now() / 1000 }), { qos: 1, retain: true });
+        client.publish(TOPIC_DRIVER, JSON.stringify({ bus_id: 'bus01', drowsy: false, yawning: false, ear: 0.30, mar: 0.0, status: 'Tỉnh táo', reset: true, ts: Date.now() / 1000 }), { qos: 1, retain: true });
+      }
 
       // 5. Xoá vệt di chuyển mô phỏng trên bản đồ
       trailLayer.clearLayers();
@@ -2590,6 +3299,31 @@
       resetRouteState();
 
       addLog(`⏹ Đã huỷ chế độ mô phỏng và đưa bản đồ về trạng thái thực tế.`, 'gps');
+    }
+
+    function resetPassengerTelemetry() {
+      countIn = 0;
+      countOut = 0;
+      countTotal = 0;
+      updatePassengerUI(0, 0, 0, capacity);
+      updateDriverUI(false, 0.30);
+      if (client && client.connected) {
+        client.publish(TOPIC_PASSENGERS, JSON.stringify({ bus_id: 'bus01', in: 0, out: 0, count: 0, capacity: capacity, level: 'normal', reset: true, ts: Date.now() / 1000 }), { qos: 1, retain: true });
+        client.publish(TOPIC_DRIVER, JSON.stringify({ bus_id: 'bus01', drowsy: false, yawning: false, ear: 0.30, mar: 0.0, status: 'Tỉnh táo', reset: true, ts: Date.now() / 1000 }), { qos: 1, retain: true });
+      }
+      if (client && client.connected) {
+        client.publish(TOPIC_PASSENGERS, JSON.stringify({ bus_id: 'bus01', in: 0, out: 0, count: 0, capacity: capacity, level: 'normal', reset: true, ts: Date.now() / 1000 }), { qos: 1, retain: true });
+      }
+      addLog('🔄 Đã đặt lại bộ đếm hành khách về 0.', 'gps');
+    }
+
+    function resetDriverTelemetry() {
+      drowsyCounter = 0;
+      updateDriverUI(false, 0.30);
+      if (client && client.connected) {
+        client.publish(TOPIC_DRIVER, JSON.stringify({ bus_id: 'bus01', drowsy: false, yawning: false, ear: 0.30, mar: 0.0, status: 'Tỉnh táo', reset: true, ts: Date.now() / 1000 }), { qos: 1, retain: true });
+      }
+      addLog('🔄 Đã đặt lại trạng thái tài xế về mặc định (Tỉnh Táo).', 'gps');
     }
 
     // Khởi tạo đồ thị ban đầu
