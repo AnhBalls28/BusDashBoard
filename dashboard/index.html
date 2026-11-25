@@ -19,17 +19,17 @@
 
   <style>
     /* ==========================================================================
-       MONOCHROME STEALTH DESIGN SYSTEM (Pure Black, Dark Gray & Slate Grayish)
+       OLED MONOCHROME STEALTH HUD (UI/UX Pro Max Compact Composition)
        ========================================================================== */
     :root {
-      --bg-pure: #09090b;
-      --bg-panel: rgba(18, 18, 22, 0.90);
-      --bg-panel-elevated: #1a1a1f;
+      --bg-pure: #050507;
+      --bg-panel: rgba(12, 12, 15, 0.88);
+      --bg-panel-elevated: #141418;
       --bg-chip: #18181b;
 
-      --border-subtle: #27272a;
-      --border-medium: #3f3f46;
-      --border-light: #52525b;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-medium: rgba(255, 255, 255, 0.16);
+      --border-light: rgba(255, 255, 255, 0.28);
 
       --text-main: #f4f4f5;
       --text-secondary: #a1a1aa;
@@ -49,8 +49,8 @@
       --accent-purple: #a855f7;
 
       --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 14px;
+      --radius-md: 8px;
+      --radius-lg: 10px;
       --radius-full: 9999px;
 
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -74,94 +74,113 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--accent-silver);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
     /* Fullscreen Leaflet OSM Map Canvas */
     #map {
       position: absolute;
-      top: 0;
-      left: 0;
+      inset: 0;
       width: 100%;
       height: 100%;
       z-index: 1;
-      background: #09090b;
+      background: #050507;
     }
 
     /* Filter for Dark OSM tiles (Monochrome Stealth - 100% Free & Zero Watermark) */
     .leaflet-tile-pane .osm-monochrome-filter {
-      filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(105%) grayscale(45%);
+      filter: invert(100%) hue-rotate(180deg) brightness(84%) contrast(106%) grayscale(48%);
     }
 
-    /* Glassmorphism Black Surface */
+    /* Crisp OLED Glass Surface */
     .stealth-surface {
       background: var(--bg-panel);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border-subtle);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
     }
 
     /* ==========================================================================
-       TOP NAVIGATION BAR (Stealth Header)
+       COMPACT TOP COMMAND BAR (40px height)
        ========================================================================== */
     .top-navbar {
       position: absolute;
-      top: 14px;
-      left: 16px;
-      right: 16px;
-      height: 50px;
-      padding: 0 16px;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      height: 40px;
+      padding: 0 10px;
       border-radius: var(--radius-lg);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 10px;
       z-index: 1000;
     }
 
     .brand-cluster {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
+      min-width: 0;
     }
 
     .brand-badge {
-      width: 32px;
-      height: 32px;
-      border-radius: var(--radius-md);
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
       background: #18181b;
       border: 1px solid var(--border-medium);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      font-size: 0.95rem;
+      font-size: 0.78rem;
       color: var(--accent-silver);
       letter-spacing: -0.02em;
+      flex-shrink: 0;
     }
 
     .brand-title {
-      font-size: 0.88rem;
+      font-size: 0.82rem;
       font-weight: 600;
       color: #fff;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      white-space: nowrap;
     }
 
     .vehicle-tag {
       font-family: var(--font-mono);
-      font-size: 0.70rem;
+      font-size: 0.66rem;
       color: var(--text-secondary);
       background: #18181b;
       border: 1px solid var(--border-subtle);
-      padding: 2px 8px;
+      padding: 1px 6px;
       border-radius: var(--radius-full);
       font-weight: 500;
     }
 
-    /* Telemetry Chips (Center) */
+    /* Unified Inline Telemetry Strip (Center) */
     .nav-telemetry-cluster {
       display: flex;
       align-items: center;
-      gap: 8px;
+      background: rgba(24, 24, 27, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      padding: 2px 4px;
+      height: 26px;
     }
 
     @media (max-width: 960px) {
@@ -171,70 +190,77 @@
     .telemetry-chip {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: var(--radius-full);
-      background: #18181b;
-      border: 1px solid var(--border-subtle);
-      font-size: 0.72rem;
+      gap: 5px;
+      padding: 0 10px;
+      font-size: 0.68rem;
       color: var(--text-muted);
       font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .telemetry-chip + .telemetry-chip {
+      border-left: 1px solid var(--border-subtle);
     }
 
     .telemetry-chip strong {
       color: var(--text-main);
+      font-weight: 600;
     }
 
-    /* Action Buttons (Right) */
+    /* Compact Action Buttons (Right) */
     .nav-actions-cluster {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .mqtt-pill {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.72rem;
+      gap: 5px;
+      height: 24px;
+      font-size: 0.68rem;
       font-weight: 500;
-      padding: 5px 12px;
+      padding: 0 8px;
       border-radius: var(--radius-full);
       background: var(--semantic-green-bg);
-      border: 1px solid rgba(34, 197, 94, 0.3);
+      border: 1px solid rgba(34, 197, 94, 0.28);
       color: var(--semantic-green);
       transition: var(--transition);
       cursor: default;
+      white-space: nowrap;
     }
 
     .mqtt-pill.offline {
       background: var(--semantic-red-bg);
-      border-color: rgba(239, 68, 68, 0.3);
+      border-color: rgba(239, 68, 68, 0.28);
       color: var(--semantic-red);
     }
 
     .mqtt-dot {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: currentColor;
     }
 
     .btn-stealth {
-      height: 32px;
-      padding: 0 12px;
-      border-radius: var(--radius-full);
+      height: 26px;
+      padding: 0 9px;
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border-subtle);
       background: #18181b;
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: 0.70rem;
       font-weight: 500;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       cursor: pointer;
       transition: var(--transition);
       user-select: none;
+      white-space: nowrap;
     }
 
     .btn-stealth:hover {
@@ -251,7 +277,7 @@
 
     .btn-stealth.primary {
       background: #27272a;
-      border-color: var(--border-light);
+      border-color: var(--border-medium);
       color: #fff;
     }
 
@@ -266,74 +292,97 @@
     }
 
     /* ==========================================================================
-       LEFT FLOATING KPI METRICS (Black & Dark Slate Gray)
+       UNIFIED 2x2 BENTO TELEMETRY HUD (Top-Left, Ultra-Compact)
        ========================================================================== */
-    .kpi-floating-grid {
+    .kpi-bento-panel {
       position: absolute;
-      top: 74px;
-      left: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: 250px;
+      top: 58px;
+      left: 10px;
+      width: 244px;
+      border-radius: var(--radius-lg);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
       z-index: 999;
-      pointer-events: none;
     }
 
-    .kpi-compact-card {
-      pointer-events: auto;
-      border-radius: var(--radius-md);
-      padding: 10px 14px;
+    .kpi-cell {
+      padding: 8px 10px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      transition: var(--transition);
+      gap: 2px;
+      border-right: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
     }
 
-    .kpi-compact-card:hover {
-      border-color: var(--border-medium);
+    .kpi-cell:nth-child(2n) {
+      border-right: none;
+    }
+
+    .kpi-cell:nth-child(n+3) {
+      border-bottom: none;
     }
 
     .kpi-card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.66rem;
+      font-size: 0.62rem;
       text-transform: uppercase;
       font-weight: 600;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       color: var(--text-muted);
+    }
+
+    .kpi-icon-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      border-radius: 4px;
+      transition: var(--transition);
+    }
+
+    .kpi-icon-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
     }
 
     .kpi-card-body {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
+      gap: 4px;
     }
 
     .kpi-big-num {
       font-family: var(--font-mono);
-      font-size: 1.28rem;
+      font-size: 1.05rem;
       font-weight: 700;
       letter-spacing: -0.02em;
       color: var(--text-main);
       font-variant-numeric: tabular-nums;
+      line-height: 1.2;
     }
 
     .kpi-submeta {
-      font-size: 0.70rem;
+      font-size: 0.64rem;
       font-family: var(--font-mono);
       color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
-    /* Monochromatic Progress Bar */
     .mini-progress-track {
       width: 100%;
-      height: 4px;
+      height: 2px;
       background: #27272a;
       border-radius: 99px;
       overflow: hidden;
-      margin-top: 4px;
+      margin-top: 3px;
     }
 
     .mini-progress-fill {
@@ -349,9 +398,9 @@
 
     /* Badge Pills */
     .badge-pill {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       font-weight: 600;
-      padding: 2px 8px;
+      padding: 1px 6px;
       border-radius: var(--radius-full);
       display: inline-flex;
       align-items: center;
@@ -363,33 +412,34 @@
     .badge-purple { background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
 
     /* ==========================================================================
-       BOTTOM CENTER DOCK & ROUTE TOOLS
+       BOTTOM CENTER MICRO-DOCK & ROUTE TOOLS
        ========================================================================== */
     .map-dock-bottom {
       position: absolute;
-      bottom: 20px;
+      bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
+      height: 34px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
+      gap: 4px;
+      padding: 3px 6px;
       border-radius: var(--radius-full);
       z-index: 999;
     }
 
     .btn-dock {
-      height: 32px;
-      padding: 0 14px;
+      height: 26px;
+      padding: 0 10px;
       border-radius: var(--radius-full);
-      border: 1px solid var(--border-subtle);
-      background: #18181b;
+      border: 1px solid transparent;
+      background: transparent;
       color: var(--text-secondary);
-      font-size: 0.74rem;
+      font-size: 0.70rem;
       font-weight: 500;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       cursor: pointer;
       transition: var(--transition);
       white-space: nowrap;
@@ -397,28 +447,28 @@
 
     .btn-dock:hover {
       background: #27272a;
-      border-color: var(--border-medium);
+      border-color: var(--border-subtle);
       color: var(--text-main);
     }
 
     .btn-dock.active {
       background: #27272a;
-      border-color: var(--border-light);
+      border-color: var(--border-medium);
       color: #fff;
     }
 
     /* Route Tools Popover */
     .route-popover {
       position: absolute;
-      bottom: 70px;
+      bottom: 52px;
       left: 50%;
       transform: translateX(-50%);
-      width: 320px;
+      width: 288px;
       border-radius: var(--radius-lg);
-      padding: 14px;
+      padding: 10px;
       display: none;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       z-index: 1000;
     }
 
@@ -428,9 +478,9 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       font-weight: 600;
-      padding-bottom: 6px;
+      padding-bottom: 5px;
       border-bottom: 1px solid var(--border-subtle);
       color: var(--text-main);
     }
@@ -438,22 +488,22 @@
     .popover-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
+      gap: 5px;
     }
 
     .btn-micro {
-      padding: 7px 10px;
+      padding: 5px 8px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-subtle);
       background: #18181b;
       color: var(--text-secondary);
-      font-size: 0.72rem;
+      font-size: 0.69rem;
       font-weight: 500;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
       transition: var(--transition);
     }
 
@@ -517,23 +567,23 @@
        ========================================================================== */
     .deviation-toast {
       position: absolute;
-      top: 74px;
+      top: 58px;
       left: 50%;
-      transform: translateX(-50%) translateY(-20px);
-      padding: 8px 18px;
+      transform: translateX(-50%) translateY(-16px);
+      padding: 6px 14px;
       border-radius: var(--radius-full);
       background: #ef4444;
       color: #fff;
-      font-size: 0.76rem;
+      font-size: 0.72rem;
       font-weight: 600;
-      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.45);
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.45);
       opacity: 0;
       pointer-events: none;
-      transition: all 0.25s ease;
+      transition: all 0.2s ease;
       z-index: 1100;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .deviation-toast.show {
@@ -548,17 +598,17 @@
        ========================================================================== */
     .replay-hud-bar {
       position: absolute;
-      bottom: 68px;
+      bottom: 52px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
       border-radius: var(--radius-lg);
-      padding: 10px 16px;
-      width: calc(100% - 32px);
-      max-width: 540px;
+      padding: 8px 12px;
+      width: calc(100% - 24px);
+      max-width: 500px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       transition: var(--transition);
     }
 
@@ -707,39 +757,52 @@
     }
 
     /* ==========================================================================
-       BOTTOM LEFT TERMINAL LOG TRAY
+       BOTTOM LEFT COLLAPSIBLE EVENT TICKER
        ========================================================================== */
     .event-stream-tray {
       position: absolute;
-      bottom: 20px;
-      left: 16px;
-      width: 320px;
+      bottom: 10px;
+      left: 10px;
+      width: 268px;
       border-radius: var(--radius-md);
-      padding: 8px 12px;
+      padding: 6px 10px;
       z-index: 999;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .event-stream-tray { display: none; }
     }
 
     .tray-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.66rem;
+      font-size: 0.62rem;
       text-transform: uppercase;
       font-weight: 600;
+      letter-spacing: 0.04em;
       color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
     }
 
     .tray-logs {
-      max-height: 80px;
-      overflow-y: hidden;
+      max-height: 36px;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 2px;
       font-family: var(--font-mono);
-      font-size: 0.68rem;
+      font-size: 0.64rem;
+      transition: max-height 0.2s ease;
+    }
+
+    .event-stream-tray.expanded .tray-logs {
+      max-height: 140px;
+      overflow-y: auto;
     }
 
     .tray-line {
@@ -932,7 +995,7 @@
   </div>
 
   <!-- ========================================================================
-       TOP NAVBAR (Stealth Monochrome)
+       COMPACT TOP COMMAND BAR
        ======================================================================== -->
   <header class="top-navbar stealth-surface">
     <div class="brand-cluster">
@@ -943,18 +1006,15 @@
       </div>
     </div>
 
-    <!-- Center Compact Metrics -->
+    <!-- Unified Inline Telemetry Strip -->
     <div class="nav-telemetry-cluster">
       <div class="telemetry-chip">
-        <span>Tốc độ:</span>
         <strong id="navSpeed">0.0 km/h</strong>
       </div>
       <div class="telemetry-chip">
-        <span>Lộ trình:</span>
         <strong id="navRouteState">Chưa vẽ tuyến</strong>
       </div>
       <div class="telemetry-chip">
-        <span>Vệ tinh:</span>
         <strong id="navSats">-- Sats</strong>
       </div>
     </div>
@@ -966,93 +1026,91 @@
         <span id="mqttStatusText">MQTT Live</span>
       </div>
 
-      <button class="btn-stealth active" id="btnFollowLocation" title="Bám theo xe bus trên bản đồ (Google Maps Follow Mode)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2.5" fill="currentColor"></circle><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="1" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="23" y2="12"></line></svg>
+      <button class="btn-stealth active" id="btnFollowLocation" aria-pressed="true" title="Bám theo xe bus trên bản đồ (Google Maps Follow Mode)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2.5" fill="currentColor"></circle><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="1" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="23" y2="12"></line></svg>
         <span id="followText">Đang bám</span>
       </button>
 
-      <button class="btn-stealth primary" id="btnDemoPlay" onclick="toggleDemoPlay()" title="Chạy mô phỏng xe bus">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      <button class="btn-stealth primary" id="btnDemoPlay" aria-pressed="false" onclick="toggleDemoPlay()" title="Chạy mô phỏng xe bus">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         <span id="demoPlayText">Mô phỏng</span>
       </button>
 
-      <button class="btn-stealth" id="btnToggleCopilot" onclick="toggleCopilot()" title="Mở trợ lý AI Copilot">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"></path></svg>
-        <span>AI Copilot</span>
+      <button class="btn-stealth" id="btnToggleCopilot" aria-pressed="false" onclick="toggleCopilot()" title="Mở trợ lý AI Copilot">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"></path></svg>
+        <span>Copilot</span>
       </button>
     </div>
   </header>
 
   <!-- ========================================================================
-       LEFT FLOATING TELEMETRY KPI CARDS (Matte Dark Slate Gray)
+       UNIFIED 2x2 BENTO TELEMETRY HUD (Compact Stealth Panel)
        ======================================================================== -->
-  <div class="kpi-floating-grid">
-    <!-- Card 1: Passenger Count -->
-    <div class="kpi-compact-card stealth-surface">
+  <section class="kpi-bento-panel stealth-surface" aria-label="Thông số vận hành thời gian thực">
+    <!-- Cell 1: Passenger Count -->
+    <div class="kpi-cell">
       <div class="kpi-card-header">
-        <span>Hành Khách Trên Xe</span>
-        <span style="cursor: pointer; display: flex; align-items: center;" title="Đặt lại số hành khách về 0" onclick="resetPassengerTelemetry()">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>
-        </span>
+        <span>Hành khách</span>
+        <button class="kpi-icon-btn" title="Đặt lại số hành khách về 0" aria-label="Đặt lại số hành khách về 0" onclick="resetPassengerTelemetry()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>
+        </button>
       </div>
       <div class="kpi-card-body">
         <div class="kpi-big-num" id="currentCount">0</div>
-        <div class="kpi-submeta">/ 30 (<span id="occupancyPercent">0% lấp đầy</span>)</div>
+        <div class="kpi-submeta">/30 (<span id="occupancyPercent">0%</span>)</div>
       </div>
       <div class="mini-progress-track">
         <div class="mini-progress-fill" id="occupancyFill"></div>
       </div>
-      <div style="font-size: 0.68rem; color: var(--text-muted); display:flex; justify-content:space-between; margin-top:4px;">
-        <span>Ngồi: <strong id="seatedNum" style="color:var(--text-secondary)">0</strong></span>
-        <span>Trống: <strong id="availNum" style="color:var(--text-secondary)">30</strong></span>
-      </div>
       <!-- Hidden compatibility elements for existing telemetry callers -->
+      <span id="seatedNum" style="display:none;">0</span>
+      <span id="availNum" style="display:none;">30</span>
       <canvas id="gaugeCanvas" width="0" height="0" style="display:none;"></canvas>
       <span id="gaugePercentText" style="display:none;">0%</span>
       <span id="occupancyBadge" style="display:none;">BÌNH THƯỜNG</span>
     </div>
 
-    <!-- Card 2: Boarding Flow -->
-    <div class="kpi-compact-card stealth-surface">
+    <!-- Cell 2: Boarding Flow -->
+    <div class="kpi-cell">
       <div class="kpi-card-header">
-        <span>Lưu Lượng Cửa Xe</span>
-        <span style="font-size: 0.65rem; color: var(--text-muted);">YOLOv8</span>
+        <span>Cửa xe</span>
+        <span>YOLO</span>
       </div>
       <div class="kpi-card-body">
-        <div class="kpi-big-num" style="color: var(--text-main);" id="totalIn">+0</div>
-        <div class="kpi-submeta" style="color: var(--text-secondary);" id="totalOut">-0 ra</div>
+        <div class="kpi-big-num" id="totalIn">+0</div>
+        <div class="kpi-submeta" id="totalOut">-0 ra</div>
       </div>
     </div>
 
-    <!-- Card 3: Driver Alertness -->
-    <div class="kpi-compact-card stealth-surface">
+    <!-- Cell 3: Driver Alertness -->
+    <div class="kpi-cell">
       <div class="kpi-card-header">
-        <span>Tài Xế (DMS)</span>
-        <span id="earValText" style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted);">EAR 0.30</span>
+        <span>Tài xế</span>
+        <span id="earValText" style="font-family: var(--font-mono);">EAR .30</span>
       </div>
       <div class="kpi-card-body">
-        <div class="kpi-big-num" id="driverStatusVal" style="color: var(--semantic-green); font-size: 1.05rem;">Tỉnh Táo</div>
-        <div class="kpi-submeta" id="drowsyBadge">MediaPipe 3D</div>
+        <div class="kpi-big-num" id="driverStatusVal" style="color: var(--semantic-green); font-size: 0.88rem;">Tỉnh Táo</div>
+        <div class="kpi-submeta" id="drowsyBadge">DMS</div>
       </div>
     </div>
 
-    <!-- Card 4: Satellite Fix -->
-    <div class="kpi-compact-card stealth-surface">
+    <!-- Cell 4: Satellite Fix -->
+    <div class="kpi-cell">
       <div class="kpi-card-header">
-        <span>Định Vị GNSS</span>
-        <span id="satInfo" style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted);">-- Sats / -- HDOP</span>
+        <span>GNSS</span>
+        <span id="satInfo" style="font-family: var(--font-mono);">-- Sats</span>
       </div>
       <div class="kpi-card-body">
         <div class="kpi-big-num" id="liveSpeed">0.0</div>
-        <div class="kpi-submeta">km/h <span id="fixStatusBadge" class="badge-pill badge-coral" style="margin-left: 4px;">Chờ GPS Fix</span></div>
+        <div class="kpi-submeta">km/h</div>
       </div>
-      <!-- Hidden liveSats element -->
+      <span id="fixStatusBadge" style="display:none;">Chờ GPS Fix</span>
       <span id="liveSats" style="display:none;">--</span>
       <span id="routePillVal" style="display:none;">Chưa vẽ</span>
       <span id="routePointCountBadge" style="display:none;">0 trạm</span>
       <span id="followBtnText" style="display:none;">Đang bám theo</span>
     </div>
-  </div>
+  </section>
 
   <!-- ========================================================================
        BOTTOM CENTER DOCK & ROUTE TOOLS
@@ -1076,20 +1134,28 @@
   <!-- Route Tools Popover -->
   <div class="route-popover stealth-surface" id="routePopover">
     <div class="popover-header">
-      <span>Cấu Hình Tuyến Đường</span>
+      <span>Cấu Hình Tuyến & Vệt GPS</span>
       <button style="background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center;" onclick="toggleRoutePopover()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
+
+    <!-- Live Status Tracker of Route vs Trail -->
+    <div style="display:flex; justify-content:space-between; font-size:0.70rem; padding: 5px 8px; background: #18181b; border-radius: 6px; border: 1px solid var(--border-subtle); font-family: var(--font-mono);">
+      <span>Tuyến chuẩn: <strong id="popoverRouteCount" style="color:var(--semantic-cyan)">0 trạm</strong></span>
+      <span>Vệt GPS: <strong id="popoverTrailCount" style="color:var(--semantic-green)">0 điểm</strong></span>
+    </div>
+
     <div style="font-size: 0.72rem; color: var(--text-secondary);" id="routeHint">
       Bấm "Vẽ tuyến" rồi click các điểm dọc mặt đường để tạo hành lang giám sát.
     </div>
+
     <div class="popover-grid">
       <button class="btn-micro" id="btnDraw">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
         <span>Vẽ tuyến</span>
       </button>
-      <button class="btn-micro" id="btnUndo">
+      <button class="btn-micro" id="btnUndo" title="Bỏ trạm vừa click khi vẽ tuyến">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
         <span>Bỏ điểm</span>
       </button>
@@ -1105,17 +1171,25 @@
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         <span>Nạp Log</span>
       </button>
-      <button class="btn-micro cyan" style="grid-column: span 2;" id="btnReplayTrail" title="Phát lại toàn bộ hành trình GPS trên bản đồ">
+      <button class="btn-micro cyan" id="btnReplayTrail" title="Phát lại toàn bộ hành trình GPS trên bản đồ">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        <span>Phát lại Vệt GPS (Replay)</span>
+        <span>Phát lại GPS</span>
       </button>
       <button class="btn-micro" style="grid-column: span 2;" id="btnTrailToRoute" title="Lấy vệt GPS thực tế thành Tuyến chuẩn">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
         <span>Lấy vệt đi làm Tuyến</span>
       </button>
-      <button class="btn-micro danger" style="grid-column: span 2;" id="btnClear" title="Xoá sạch tuyến giám sát">
+      <button class="btn-micro danger" id="btnClearTrailInside" title="Xoá sạch vệt đường đi thực tế trên bản đồ">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-        <span>Xoá toàn bộ tuyến</span>
+        <span>Xoá vệt GPS</span>
+      </button>
+      <button class="btn-micro danger" id="btnClear" title="Xoá các trạm tuyến giám sát">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <span>Xoá tuyến</span>
+      </button>
+      <button class="btn-micro danger" style="grid-column: span 2; background: rgba(239, 68, 68, 0.22); border-color: rgba(239, 68, 68, 0.55);" id="btnClearAll" title="Xoá sạch cả Tuyến lẫn Vệt GPS để thử nghiệm test case mới">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+        <span>Xoá sạch tất cả (Tuyến + Vệt)</span>
       </button>
     </div>
     <div class="route-options-row">
@@ -1187,11 +1261,11 @@
   </div>
 
   <!-- ========================================================================
-       BOTTOM LEFT TERMINAL LOG TRAY
+       BOTTOM LEFT COLLAPSIBLE EVENT TICKER
        ======================================================================== -->
-  <div class="event-stream-tray stealth-surface">
-    <div class="tray-header">
-      <span>Nhật ký thời gian thực</span>
+  <div class="event-stream-tray stealth-surface" id="eventStreamTray">
+    <div class="tray-header" onclick="document.getElementById('eventStreamTray').classList.toggle('expanded')" title="Bấm để mở rộng / thu gọn nhật ký">
+      <span>Nhật ký</span>
       <span id="logEventCountText" style="font-family: var(--font-mono);">0 logs</span>
     </div>
     <div class="tray-logs" id="streamLogBox">
@@ -1366,12 +1440,19 @@
       if (isFollowMode) setFollowMode(false);
     });
 
+    function updatePopoverCounts() {
+      const popRoute = document.getElementById('popoverRouteCount');
+      if (popRoute) popRoute.innerText = ${route.points ? route.points.length : 0} trạm;
+      const popTrail = document.getElementById('popoverTrailCount');
+      if (popTrail) popTrail.innerText = ${savedTrail ? savedTrail.length : 0} điểm;
+    }
+
     function addTrailPointVisual(pos, off) {
       const st = off ? 'off' : 'on';
       if (!trailSeg || st !== trailSegState) {
         const start = lastTrailPt ? [lastTrailPt, pos] : [pos];
         trailSeg = L.polyline(start, {
-          color: off ? '#ef4444' : '#a1a1aa', weight: 3, opacity: 0.85
+          color: off ? '#ef4444' : '#22c55e', weight: 3, opacity: 0.85
         }).addTo(trailLayer);
         trailSegState = st;
       } else {
@@ -1393,6 +1474,7 @@
       });
       if (savedTrail.length > 10000) savedTrail.shift();
       try { localStorage.setItem(TRAIL_STORAGE_KEY, JSON.stringify(savedTrail)); } catch (e) {}
+      updatePopoverCounts();
     }
 
     try {
@@ -1400,6 +1482,7 @@
       if (Array.isArray(oldTrail)) {
         savedTrail = oldTrail;
         savedTrail.forEach(pt => addTrailPointVisual([pt.lat, pt.lon], pt.off));
+        updatePopoverCounts();
       }
     } catch (e) {}
 
@@ -1525,6 +1608,7 @@
         navState.style.color = 'var(--text-main)';
       }
       updateRouteHint();
+      updatePopoverCounts();
     }
 
     function updateRouteHint() {
@@ -1573,12 +1657,12 @@
 
       const dynamicMargin = (hdop && hdop > 2.0) ? (hdop - 2.0) * 4 : 0;
       const effectiveThreshold = route.threshold + dynamicMargin;
+      const isOff = dist > effectiveThreshold;
 
-      if (dist > effectiveThreshold) {
+      if (isOff) {
         offCount++; onCount = 0;
         if (offCount >= 2) {
           setRouteUI(dist, true);
-          return true;
         }
       } else {
         onCount++;
@@ -1587,7 +1671,7 @@
           setRouteUI(dist, false);
         }
       }
-      return false;
+      return isOff;
     }
 
     // Toggle Route Tools Popover
@@ -1611,16 +1695,93 @@
       }
     };
 
-    document.getElementById('btnUndo').onclick = () => {
-      route.points.pop(); saveRoute(); resetRouteState(); renderRoute();
-    };
-
-    document.getElementById('btnClear').onclick = () => {
-      if (route.points.length && !confirm('Xoá toàn bộ tuyến giám sát?')) return;
+    function clearGpsTrail(silent = false) {
+      if (!silent && savedTrail.length && !confirm(`Xoá sạch vệt di chuyển GPS (${savedTrail.length} điểm) trên bản đồ?`)) return false;
       if (isReplayRunning) stopReplay();
-      route.points = []; saveRoute(); resetRouteState(); renderRoute();
+      trailLayer.clearLayers();
+      trailSeg = null;
+      trailSegState = null;
+      lastTrailPt = null;
+      savedTrail = [];
+      try { localStorage.removeItem(TRAIL_STORAGE_KEY); } catch (e) {}
+      updatePopoverCounts();
+      addLog('Đã xoá sạch vệt di chuyển GPS trên bản đồ.', 'gps');
+      return true;
+    }
+
+    function clearRouteCorridor(silent = false) {
+      if (!route.points || route.points.length === 0) {
+        if (savedTrail && savedTrail.length > 0) {
+          if (confirm(`Tuyến chuẩn vốn đang trống (0 trạm)!\n\nĐường bạn đang thấy trên bản đồ là VỆT ĐI GPS THỰC TẾ (${savedTrail.length} điểm).\nBạn có muốn xoá Vệt đi GPS này luôn không?`)) {
+            clearGpsTrail(true);
+          }
+        } else {
+          alert('Tuyến chuẩn đã trống, không có điểm nào để xoá!');
+        }
+        return;
+      }
+      if (!silent && !confirm(`Xoá toàn bộ tuyến giám sát (${route.points.length} trạm)?`)) return;
+      if (isReplayRunning) stopReplay();
+      route.points = [];
+      saveRoute();
+      resetRouteState();
+      renderRoute();
+      updatePopoverCounts();
       addLog('Đã xoá tuyến giám sát trên bản đồ.', 'gps');
-    };
+    }
+
+    function clearEverything() {
+      const rCount = route.points ? route.points.length : 0;
+      const tCount = savedTrail ? savedTrail.length : 0;
+      if (rCount === 0 && tCount === 0) {
+        alert('Bản đồ hiện đã sạch (0 trạm tuyến, 0 điểm vệt GPS)!');
+        return;
+      }
+      if (!confirm(`XOÁ SẠCH TẤT CẢ ĐỂ TEST CASE MỚI?\n\n• Tuyến chuẩn: ${rCount} trạm\n• Vệt GPS: ${tCount} điểm\n\nThao tác này sẽ xoá sạch cả Tuyến lẫn Vệt đi trên bản đồ!`)) return;
+      if (isReplayRunning) stopReplay();
+      route.points = [];
+      saveRoute();
+      resetRouteState();
+      renderRoute();
+      clearGpsTrail(true);
+      updatePopoverCounts();
+      addLog('Đã xoá sạch tất cả (Tuyến chuẩn + Vệt GPS) để chuẩn bị test case mới.', 'gps');
+    }
+
+    function undoPoint() {
+      if (route.points && route.points.length > 0) {
+        route.points.pop();
+        saveRoute();
+        resetRouteState();
+        renderRoute();
+        updatePopoverCounts();
+        addLog(`Đã bỏ 1 trạm tuyến (còn ${route.points.length} trạm).`, 'gps');
+        return;
+      }
+      if (savedTrail && savedTrail.length > 0) {
+        if (confirm(`Tuyến chuẩn không có trạm nào!\n\nBạn có muốn bỏ 1 điểm cuối của VỆT GPS THỰC TẾ (${savedTrail.length} điểm) không?`)) {
+          savedTrail.pop();
+          try { localStorage.setItem(TRAIL_STORAGE_KEY, JSON.stringify(savedTrail)); } catch (e) {}
+          trailLayer.clearLayers();
+          trailSeg = null;
+          trailSegState = null;
+          lastTrailPt = null;
+          savedTrail.forEach(pt => addTrailPointVisual([pt.lat, pt.lon], pt.off));
+          updatePopoverCounts();
+          addLog(`Đã bỏ 1 điểm vệt GPS thực tế (còn ${savedTrail.length} điểm).`, 'gps');
+        }
+        return;
+      }
+      alert('Không có điểm nào trên bản đồ để bỏ!');
+    }
+
+    document.getElementById('btnUndo').onclick = undoPoint;
+    document.getElementById('btnClear').onclick = () => clearRouteCorridor(false);
+    document.getElementById('btnClearTrail').onclick = () => clearGpsTrail(false);
+    const btnClearTrailInside = document.getElementById('btnClearTrailInside');
+    if (btnClearTrailInside) btnClearTrailInside.onclick = () => clearGpsTrail(false);
+    const btnClearAll = document.getElementById('btnClearAll');
+    if (btnClearAll) btnClearAll.onclick = clearEverything;
 
     const btnShareRoute = document.getElementById('btnShareRoute');
     if (btnShareRoute) {
@@ -1641,15 +1802,6 @@
         }
       };
     }
-
-    document.getElementById('btnClearTrail').onclick = () => {
-      if (savedTrail.length && !confirm('Xoá sạch vệt di chuyển hiện tại trên bản đồ?')) return;
-      if (isReplayRunning) stopReplay();
-      trailLayer.clearLayers(); trailSeg = null; trailSegState = null; lastTrailPt = null;
-      savedTrail = [];
-      try { localStorage.removeItem(TRAIL_STORAGE_KEY); } catch (e) {}
-      addLog('Đã xoá sạch vệt di chuyển trên bản đồ.', 'gps');
-    };
 
     // --- LƯU LOG (EXPORT JSON + CSV) & NẠP LOG (IMPORT) & CHUYỂN VỆT ĐI THÀNH TUYẾN ---
     const btnExportData = document.getElementById('btnExportData');
@@ -1738,6 +1890,7 @@
               setFollowMode(false, true);
               map.setView(focusPt, 18, { animate: true });
             }
+            updatePopoverCounts();
             addLog(`Đã nạp lại Log thành công: ${importedRouteCount} điểm tuyến & ${importedTrailCount} điểm vệt GPS!`, 'gps');
           } catch (err) {
             alert('File JSON không hợp lệ: ' + err.message);
@@ -1766,6 +1919,7 @@
         saveRoute();
         resetRouteState();
         renderRoute();
+        updatePopoverCounts();
         addLog(`Đã chuyển vệt đi thực tế thành Tuyến chuẩn (${simplified.length} trạm, dài ${routeLengthMeters().toFixed(0)} m)!`, 'gps');
       };
     }
@@ -1861,13 +2015,30 @@
       addLog(`Bắt đầu phát lại hành trình GPS (${savedTrail.length} điểm ghi nhận)`, 'gps');
     }
 
+    function evaluateReplayPoint(pt) {
+      if (route.points && route.points.length >= 2) {
+        const dist = distToRouteMeters(pt.lat, pt.lon);
+        if (dist !== null) {
+          const dynamicMargin = (pt.hdop && pt.hdop > 2.0) ? (pt.hdop - 2.0) * 4 : 0;
+          const effectiveThreshold = route.threshold + dynamicMargin;
+          const isOff = dist > effectiveThreshold;
+          return { isOff: isOff, dist: dist, hasCorridor: true };
+        }
+      }
+      if (pt.off !== undefined) {
+        const isOff = !!pt.off;
+        return { isOff: isOff, dist: isOff ? (route.threshold + 15) : 0, hasCorridor: false };
+      }
+      return { isOff: false, dist: 0, hasCorridor: false };
+    }
+
     function addReplayTrailVisual(pos, off) {
       if (!replayTrailLayer) return;
       const st = off ? 'off' : 'on';
       if (!replayTrailSeg || st !== replayTrailSegState) {
         const start = replayLastPt ? [replayLastPt, pos] : [pos];
         replayTrailSeg = L.polyline(start, {
-          color: off ? '#ef4444' : '#38bdf8',
+          color: off ? '#ef4444' : '#22c55e',
           weight: 4,
           opacity: 0.95
         }).addTo(replayTrailLayer);
@@ -1891,37 +2062,60 @@
         map.panTo(pos, { animate: true, duration: 0.35 });
       }
 
-      const off = evaluateRoute(pt.lat, pt.lon, pt.hdop || 1.0);
+      const dev = evaluateReplayPoint(pt);
+      const off = dev.isOff;
       addReplayTrailVisual(pos, off);
 
-      const speed = pt.speed != null ? Number(pt.speed) : 22.0;
-      const sats = pt.sats != null ? pt.sats : 8;
-      const hdop = pt.hdop != null ? Number(pt.hdop) : 1.0;
+      let speed = pt.speed != null ? Number(pt.speed) : null;
+      if (speed === null && idx > 0 && pt.ts && savedTrail[idx - 1].ts) {
+        const dtSec = (pt.ts - savedTrail[idx - 1].ts) / 1000;
+        if (dtSec > 0) {
+          const prev = savedTrail[idx - 1];
+          speed = (map.distance([prev.lat, prev.lon], pos) / dtSec) * 3.6;
+        }
+      }
+      const speedText = speed !== null ? speed.toFixed(1) : '--';
+      const satsText = pt.sats != null ? pt.sats : '--';
+      const hdopText = pt.hdop != null ? Number(pt.hdop).toFixed(1) : '--';
 
-      document.getElementById('liveSpeed').innerText = speed.toFixed(1);
+      document.getElementById('liveSpeed').innerText = speedText;
       const navSpeed = document.getElementById('navSpeed');
-      if (navSpeed) navSpeed.innerText = `${speed.toFixed(1)} km/h`;
+      if (navSpeed) navSpeed.innerText = `${speedText} km/h`;
 
       const satEl = document.getElementById('satInfo');
-      if (satEl) satEl.innerText = `${sats} Sats / ${hdop.toFixed(1)} HDOP`;
+      if (satEl) satEl.innerText = `${satsText} Sats / ${hdopText} HDOP`;
       const navSats = document.getElementById('navSats');
-      if (navSats) navSats.innerText = `${sats} Sats`;
+      if (navSats) navSats.innerText = `${satsText} Sats`;
 
       const badge = document.getElementById('replayIdxBadge');
       if (badge) badge.innerText = `${idx + 1} / ${savedTrail.length}`;
 
       const meta = document.getElementById('replayTelemetryMeta');
-      if (meta) meta.innerText = `${speed.toFixed(1)} km/h • ${sats} Sats`;
+      if (meta) meta.innerText = `${speedText} km/h • ${satsText} Sats`;
 
       const devStatus = document.getElementById('replayDeviationStatus');
       if (devStatus) {
         if (off) {
-          devStatus.innerText = 'LỆCH TUYẾN';
+          devStatus.innerText = dev.hasCorridor ? `LỆCH +${dev.dist.toFixed(0)}m` : 'LỆCH TUYẾN';
           devStatus.className = 'badge-pill badge-coral';
         } else {
           devStatus.innerText = 'Đúng tuyến';
           devStatus.className = 'badge-pill badge-green';
         }
+      }
+
+      // Pop-up cảnh báo lệch tuyến thời gian thực khi Replay
+      const banner = document.getElementById('deviationBanner');
+      const textEl = document.getElementById('deviationText');
+      if (off) {
+        if (banner) banner.classList.add('show');
+        if (textEl) {
+          textEl.innerText = dev.hasCorridor 
+            ? `CẢNH BÁO: XE ĐANG LỆCH TUYẾN (${dev.dist.toFixed(0)}m > ${route.threshold}m)!`
+            : `CẢNH BÁO: XE ĐANG LỆCH TUYẾN THEO NHẬT KÝ GPS!`;
+        }
+      } else {
+        if (banner) banner.classList.remove('show');
       }
 
       const pct = Math.round(((idx + 1) / savedTrail.length) * 100);
@@ -1967,8 +2161,8 @@
 
       for (let i = 0; i <= newIdx; i++) {
         const pt = savedTrail[i];
-        const off = evaluateRoute(pt.lat, pt.lon, pt.hdop || 1.0);
-        addReplayTrailVisual([pt.lat, pt.lon], off);
+        const dev = evaluateReplayPoint(pt);
+        addReplayTrailVisual([pt.lat, pt.lon], dev.isOff);
       }
 
       renderReplayPoint(newIdx);
