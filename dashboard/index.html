@@ -1442,9 +1442,9 @@
 
     function updatePopoverCounts() {
       const popRoute = document.getElementById('popoverRouteCount');
-      if (popRoute) popRoute.innerText = ${route.points ? route.points.length : 0} trạm;
+      if (popRoute) popRoute.innerText = `${route.points ? route.points.length : 0} trạm`;
       const popTrail = document.getElementById('popoverTrailCount');
-      if (popTrail) popTrail.innerText = ${savedTrail ? savedTrail.length : 0} điểm;
+      if (popTrail) popTrail.innerText = `${savedTrail ? savedTrail.length : 0} điểm`;
     }
 
     function addTrailPointVisual(pos, off) {
