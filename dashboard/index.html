@@ -2067,14 +2067,19 @@
       addReplayTrailVisual(pos, off);
 
       let speed = pt.speed != null ? Number(pt.speed) : null;
-      if (speed === null && idx > 0 && pt.ts && savedTrail[idx - 1].ts) {
-        const dtSec = (pt.ts - savedTrail[idx - 1].ts) / 1000;
-        if (dtSec > 0) {
-          const prev = savedTrail[idx - 1];
-          speed = (map.distance([prev.lat, prev.lon], pos) / dtSec) * 3.6;
+      if (speed === null && idx > 0) {
+        const prev = savedTrail[idx - 1];
+        const distMeters = map.distance([prev.lat, prev.lon], pos);
+        if (pt.ts && prev.ts && (pt.ts - prev.ts) > 0) {
+          const dtSec = (pt.ts - prev.ts) / 1000;
+          speed = (distMeters / dtSec) * 3.6;
+        } else {
+          // Legacy log fallback: estimate from step distance assuming ~1Hz GPS cadence
+          speed = Math.min(80, distMeters * 3.6);
         }
       }
-      const speedText = speed !== null ? speed.toFixed(1) : '--';
+      if (speed === null) speed = 0.0;
+      const speedText = speed.toFixed(1);
       const satsText = pt.sats != null ? pt.sats : '--';
       const hdopText = pt.hdop != null ? Number(pt.hdop).toFixed(1) : '--';
 
